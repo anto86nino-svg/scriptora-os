@@ -87,7 +87,7 @@ describe("subchapter-pipeline", () => {
     ];
     const edited = `${subs[0]!.content}\n\n${subs[1]!.content.slice(0, 120)} [Limite parole del piano raggiunto.]`;
 
-    const synced = syncChapterContentWithSubchapters({ content: edited, subchapters: subs }, 5);
+    const synced = syncChapterContentWithSubchapters({ title: "Capitolo 6", content: edited, subchapters: subs }, 5);
     expect(synced.content).toBe(edited);
     expect(synced.subchapters?.every((sub) => sub.content.length > 0)).toBe(true);
     expect(synced.content).toContain("[Limite parole del piano raggiunto.]");

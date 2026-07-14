@@ -1,6 +1,7 @@
 import type { BookConfig, BookProject, Genre, Language } from "@/types/book";
 
 export type ProjectHandoffSource =
+  | "character-studio"
   | "title-domination"
   | "kdp-launch"
   | "keyword-gold"

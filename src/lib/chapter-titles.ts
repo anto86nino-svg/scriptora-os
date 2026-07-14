@@ -113,7 +113,7 @@ function normalizeLoose(value: string): string {
 }
 
 function contextText(context: ChapterTitleContext = {}): string {
-  const config = (context.config || {}) as Partial<BookConfig> & Record<string, unknown>;
+  const config: Partial<BookConfig> = context.config || {};
   const characters = Array.isArray(config.characters)
     ? config.characters
         .map((character: any) => [character?.name, character?.surname, character?.role, character?.secret].filter(Boolean).join(" "))

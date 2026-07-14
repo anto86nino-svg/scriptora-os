@@ -1,17 +1,14 @@
-import { useState, useRef, useEffect, useMemo, useCallback, memo, type RefObject } from "react";
+import { lazy, Suspense, useState, useRef, useEffect, useMemo, useCallback, memo, type RefObject } from "react";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating, isGenerationFailureStatus, getSubchaptersPerChapter } from "@/types/book";
 import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, AlertTriangle, Download, Zap, Headphones, Shield, Clock3, Scissors, CheckCircle2 } from "lucide-react";
 import { BlueprintTheater } from "@/components/blueprint-theater/BlueprintTheater";
 import { BlueprintRecoveryCard } from "@/components/blueprint/BlueprintRecoveryCard";
-import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel";
-import { ChapterEditorialWorkbench } from "@/components/ChapterEditorialWorkbench";
 import { GenreProfileBadge } from "@/components/GenreProfileBadge";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
 import { BookTypeBadge } from "@/components/BookTypeBadge";
 import { MatterSectionDisabled } from "@/components/MatterSectionDisabled";
 import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
-import { GenreCoachPanel } from "@/components/GenreCoachPanel";
 import { downloadText } from "@/lib/download";
 import { usePlan } from "@/lib/plan";
 import { ScriptoraFreeWatermark } from "@/components/brand/ScriptoraFreeWatermark";
@@ -40,6 +37,16 @@ import { buildChapterEditorialOutcome, REWRITE_LEVEL_LABELS, type ChapterEditori
 import { EditorScorePro } from "@/components/writer/EditorScorePro";
 import { WRITER_STREAM_STATUS_LINES } from "@/lib/writer/live-stream-status";
 
+const ChapterIntelligencePanel = lazy(() =>
+  import("@/components/ChapterIntelligencePanel").then((m) => ({ default: m.ChapterIntelligencePanel })),
+);
+const ChapterEditorialWorkbench = lazy(() =>
+  import("@/components/ChapterEditorialWorkbench").then((m) => ({ default: m.ChapterEditorialWorkbench })),
+);
+const GenreCoachPanel = lazy(() =>
+  import("@/components/GenreCoachPanel").then((m) => ({ default: m.GenreCoachPanel })),
+);
+
 interface EditorPanelProps {
   project: BookProject;
   activeSection: SectionId | null;
@@ -64,6 +71,8 @@ interface EditorPanelProps {
   onUpdateBlueprintField?: (field: "overview" | "emotionalArc", value: string) => void;
   onUpdateBlueprintOutlineTitle?: (index: number, title: string) => void;
   onUpdateBlueprintOutlineSummary?: (index: number, summary: string) => void;
+  onUpdateBlueprintSubchapterTitle?: (chapterIndex: number, subIndex: number, title: string) => void;
+  onUpdateBlueprintSubchapterSummary?: (chapterIndex: number, subIndex: number, summary: string) => void;
   onRegenerateBlueprint?: () => void;
   onCreateSafeBlueprint?: () => void;
   onAutoCompleteBlueprintConfig?: () => void;
@@ -103,7 +112,7 @@ export function EditorPanel({
   onCancelGeneration,
   chunkProgress,
   writingSettings,
-  onUpdateBlueprintField, onUpdateBlueprintOutlineTitle, onUpdateBlueprintOutlineSummary,
+  onUpdateBlueprintField, onUpdateBlueprintOutlineTitle, onUpdateBlueprintOutlineSummary, onUpdateBlueprintSubchapterTitle, onUpdateBlueprintSubchapterSummary,
   onRegenerateBlueprint, onCreateSafeBlueprint, onAutoCompleteBlueprintConfig, onApproveBlueprint, onGenerateBlueprint,
   onUpdateFrontMatterField, onUpdateBackMatterField,
   onNarrateChapter,
@@ -222,6 +231,8 @@ export function EditorPanel({
                   onUpdateField={onUpdateBlueprintField}
                   onUpdateOutlineTitle={onUpdateBlueprintOutlineTitle}
                   onUpdateOutlineSummary={onUpdateBlueprintOutlineSummary}
+                  onUpdateSubchapterTitle={onUpdateBlueprintSubchapterTitle}
+                  onUpdateSubchapterSummary={onUpdateBlueprintSubchapterSummary}
                   onRegenerateBlueprint={onRegenerateBlueprint}
                   onCreateSafeBlueprint={onCreateSafeBlueprint}
                   onAutoCompleteBlueprintConfig={onAutoCompleteBlueprintConfig}
@@ -400,6 +411,8 @@ function BlueprintView({
   onUpdateField,
   onUpdateOutlineTitle,
   onUpdateOutlineSummary,
+  onUpdateSubchapterTitle,
+  onUpdateSubchapterSummary,
   onRegenerateBlueprint,
   onCreateSafeBlueprint,
   onAutoCompleteBlueprintConfig,
@@ -425,6 +438,8 @@ function BlueprintView({
   onUpdateField?: (field: "overview" | "emotionalArc", value: string) => void;
   onUpdateOutlineTitle?: (index: number, title: string) => void;
   onUpdateOutlineSummary?: (index: number, summary: string) => void;
+  onUpdateSubchapterTitle?: (chapterIndex: number, subIndex: number, title: string) => void;
+  onUpdateSubchapterSummary?: (chapterIndex: number, subIndex: number, summary: string) => void;
   onRegenerateBlueprint?: () => void;
   onCreateSafeBlueprint?: () => void;
   onAutoCompleteBlueprintConfig?: () => void;
@@ -485,6 +500,9 @@ function BlueprintView({
           chunkProgress={chunkProgress}
           editable={Boolean(onUpdateOutlineTitle)}
           onChapterTitleChange={onUpdateOutlineTitle}
+          onChapterSummaryChange={onUpdateOutlineSummary}
+          onSubchapterTitleChange={onUpdateSubchapterTitle}
+          onSubchapterSummaryChange={onUpdateSubchapterSummary}
           onSelectChapter={onSelectChapter}
           selectedChapterIndex={selectedChapterIndex}
           showApproveBanner={project.blueprintApproved === false && Boolean(onApproveBlueprint)}
@@ -868,7 +886,7 @@ function resolveExpectedSubchapterCount(
   return getSubchaptersPerChapter(project.config);
 }
 
-function SubchapterCoverageStrip({
+const SubchapterCoverageStrip = memo(function SubchapterCoverageStrip({
   chapterIndex,
   expectedCount,
   subchapters,
@@ -882,13 +900,17 @@ function SubchapterCoverageStrip({
   onGenerateSubchapter: (subIdx: number) => void;
 }) {
   const total = expectedCount > 0 ? expectedCount : subchapters.length;
+  const visibleSubchapters = useMemo(() => subchapters.slice(0, total), [subchapters, total]);
+  const boundaryIssues = useMemo(() => detectSubchapterBoundaryIssues(visibleSubchapters), [visibleSubchapters]);
+  const corruptSubIndexes = useMemo(
+    () => new Set(boundaryIssues.flatMap((issue) => [issue.boundaryIndex, issue.boundaryIndex + 1])),
+    [boundaryIssues],
+  );
+  const written = useMemo(
+    () => visibleSubchapters.filter((sub, index) => hasRealSubchapterContent(sub.content) && !corruptSubIndexes.has(index)).length,
+    [visibleSubchapters, corruptSubIndexes],
+  );
   if (total <= 0) return null;
-
-  const boundaryIssues = detectSubchapterBoundaryIssues(subchapters.slice(0, total));
-  const corruptSubIndexes = new Set(boundaryIssues.flatMap((issue) => [issue.boundaryIndex, issue.boundaryIndex + 1]));
-  const written = subchapters
-    .slice(0, total)
-    .filter((sub, index) => hasRealSubchapterContent(sub.content) && !corruptSubIndexes.has(index)).length;
 
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
@@ -930,7 +952,7 @@ function SubchapterCoverageStrip({
       </div>
     </div>
   );
-}
+});
 
 function recommendationLabel(action: ChapterEditorialOutcome["recommendedNextAction"]): string {
   switch (action) {
@@ -1110,7 +1132,7 @@ function ChapterView({
   onContinueChapter,
 }: {
   project: BookProject; chapterIndex: number;
-  outline: { title: string; summary: string }; chapter: Chapter | undefined;
+  outline: { title: string; summary: string; subchapters?: unknown[] }; chapter: Chapter | undefined;
   isGenerating: boolean; isEvaluating: boolean;
   onGenerate: () => void; onRegenerate: () => void; onRewrite: (level?: RewriteLevel) => void; onEvaluate: () => void;
   onAutoRewrite?: (threshold: number) => void;
@@ -1134,20 +1156,31 @@ function ChapterView({
   const isGenerated = Boolean(chapter?.content?.length);
   const { plan } = usePlan();
   const showFreeWatermark = Boolean(isGenerated && shouldApplyScriptoraFreeWatermark(plan));
-  const chapterLanguage = ws?.config?.language || ws?.config?.bookLanguage || ws?.config?.uiLanguage || "it";
+  const chapterLanguage = project.config.language || "Italian";
   const currentLength = chapter?.lengthOverride || project.config.chapterLength;
-  const expectedSubchapterCount = resolveExpectedSubchapterCount(project, outline);
-  const writtenSubchapterCount = chapter?.subchapters
-    ?.slice(0, expectedSubchapterCount > 0 ? expectedSubchapterCount : undefined)
-    .filter((sub) => hasRealSubchapterContent(sub.content)).length || 0;
-  const nextMissingSubchapterCandidate = expectedSubchapterCount > 0
-    ? Array.from({ length: expectedSubchapterCount }, (_, index) => index)
-        .find((index) => !hasRealSubchapterContent(chapter?.subchapters?.[index]?.content))
-    : -1;
-  const nextMissingSubchapterIndex = typeof nextMissingSubchapterCandidate === "number" ? nextMissingSubchapterCandidate : -1;
-  const hasMissingExpectedSubchapter = typeof nextMissingSubchapterIndex === "number" && nextMissingSubchapterIndex >= 0;
-  const subchapterCtaIndex = hasMissingExpectedSubchapter ? nextMissingSubchapterIndex : (chapter?.subchapters?.length || 0);
-  const chapterWordCount = chapter?.content?.trim() ? chapter.content.trim().split(/\s+/).length : 0;
+  const expectedSubchapterCount = resolveExpectedSubchapterCount(project, { subchapters: outline?.subchapters });
+  const subchapterStats = useMemo(() => {
+    const subs = chapter?.subchapters || [];
+    const visible = expectedSubchapterCount > 0 ? subs.slice(0, expectedSubchapterCount) : subs;
+    const written = visible.filter((sub) => hasRealSubchapterContent(sub.content)).length;
+    const nextMissing = expectedSubchapterCount > 0
+      ? Array.from({ length: expectedSubchapterCount }, (_, index) => index)
+          .find((index) => !hasRealSubchapterContent(subs[index]?.content))
+      : -1;
+    const nextMissingIndex = typeof nextMissing === "number" ? nextMissing : -1;
+    const hasMissing = nextMissingIndex >= 0;
+    return {
+      writtenSubchapterCount: written,
+      nextMissingSubchapterIndex: nextMissingIndex,
+      hasMissingExpectedSubchapter: hasMissing,
+      subchapterCtaIndex: hasMissing ? nextMissingIndex : subs.length,
+    };
+  }, [chapter?.subchapters, expectedSubchapterCount]);
+  const { writtenSubchapterCount, nextMissingSubchapterIndex, hasMissingExpectedSubchapter, subchapterCtaIndex } = subchapterStats;
+  const chapterWordCount = useMemo(() => {
+    const content = chapter?.content?.trim();
+    return content ? content.split(/\s+/).length : 0;
+  }, [chapter?.content]);
   const [showRewriteMenu, setShowRewriteMenu] = useState(false);
   const [editorialOpen, setEditorialOpen] = useState(false);
   const [editorialMode, setEditorialMode] = useState<"analysis" | "patch">("analysis");
@@ -1155,12 +1188,18 @@ function ChapterView({
   const [cleanupStatus, setCleanupStatus] = useState<"idle" | "running" | "ready" | "applied" | "error">("idle");
   const [cleanupResult, setCleanupResult] = useState<EditorialCleanupResult | null>(null);
   const [cleanupError, setCleanupError] = useState("");
+  const cleanupPreviewTimerRef = useRef<number | null>(null);
+  const cleanupPreviewRunRef = useRef(0);
   const liveAnchorRef = useRef<HTMLDivElement | null>(null);
   const autoFollowLiveRef = useRef(true);
   const [showReturnToLive, setShowReturnToLive] = useState(false);
   const editorialOutcome = useMemo(
-    () => buildChapterEditorialOutcome(chapter?.content || "", chapter?.subchapters || []),
-    [chapter?.content, chapter?.subchapters],
+    () => isGenerating ? null : buildChapterEditorialOutcome(chapter?.content || "", chapter?.subchapters || []),
+    [chapter?.content, chapter?.subchapters, isGenerating],
+  );
+  const microChapterBrief = useMemo(
+    () => buildMicroChapterBrief(outline.summary, chapterIndex, project.config.language),
+    [outline.summary, chapterIndex, project.config.language],
   );
 
   const rawPublicTitle = isGenerated
@@ -1179,15 +1218,37 @@ function ChapterView({
     totalChapters: project.config.numberOfChapters,
   });
   const liveSignature = `${chunkProgress?.chunkIndex ?? 0}:${chunkProgress?.currentWords ?? 0}:${chunkProgress?.content?.length ?? chapter?.content?.length ?? 0}`;
+  const cleanupIdentity = useMemo(
+    () => ({ projectId: project.id, chapterIndex, content: chapter?.content || "", subchapters: chapter?.subchapters }),
+    [chapter?.content, chapter?.subchapters, chapterIndex, project.id],
+  );
+  const cleanupIdentityRef = useRef(cleanupIdentity);
+  cleanupIdentityRef.current = cleanupIdentity;
+
+  const getLiveScrollContainer = useCallback((): HTMLElement | null => {
+    if (typeof window === "undefined" || typeof document === "undefined") return null;
+    let node = liveAnchorRef.current?.parentElement ?? null;
+    while (node && node !== document.body) {
+      const style = window.getComputedStyle(node);
+      if (/(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight) return node;
+      node = node.parentElement;
+    }
+    return null;
+  }, []);
 
   const isNearDocumentBottom = useCallback(() => {
+    const scrollNode = getLiveScrollContainer();
+    if (scrollNode) {
+      const viewportBottom = scrollNode.scrollTop + scrollNode.clientHeight;
+      return scrollNode.scrollHeight - viewportBottom < 260;
+    }
     if (typeof window === "undefined" || typeof document === "undefined") return true;
     const doc = document.documentElement;
     const scrollTop = window.scrollY || doc.scrollTop || 0;
     const viewportBottom = scrollTop + window.innerHeight;
     const documentHeight = Math.max(doc.scrollHeight, document.body?.scrollHeight || 0);
     return documentHeight - viewportBottom < 260;
-  }, []);
+  }, [getLiveScrollContainer]);
 
   const scrollToLive = useCallback((behavior: ScrollBehavior = "smooth") => {
     autoFollowLiveRef.current = true;
@@ -1210,36 +1271,36 @@ function ChapterView({
       setShowReturnToLive(!nearBottom);
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    const scrollNode = getLiveScrollContainer();
+    const eventTarget: Window | HTMLElement = scrollNode || window;
+    eventTarget.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     scrollToLive("auto");
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isGenerating, isNearDocumentBottom, scrollToLive]);
+    return () => eventTarget.removeEventListener("scroll", handleScroll);
+  }, [getLiveScrollContainer, isGenerating, isNearDocumentBottom, scrollToLive]);
 
   useEffect(() => {
     if (!isGenerating || !autoFollowLiveRef.current) return;
-    scrollToLive("smooth");
+    scrollToLive("auto");
   }, [isGenerating, liveSignature, scrollToLive]);
 
   useEffect(() => {
-    if (!chapterToolRequest) return;
-    if (chapterToolRequest.mode === "analysis") {
-      setEditorialMode("analysis");
-      setEditorialOpen(true);
-    } else if (chapterToolRequest.mode === "patch") {
-      setEditorialMode("patch");
-      setEditorialOpen(true);
-    } else {
-      runCleanupPreview();
+    cleanupPreviewRunRef.current += 1;
+    if (cleanupPreviewTimerRef.current !== null) {
+      window.clearTimeout(cleanupPreviewTimerRef.current);
+      cleanupPreviewTimerRef.current = null;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapterToolRequest?.nonce, chapterToolRequest?.mode]);
-
-  useEffect(() => {
     setCleanupStatus("idle");
     setCleanupResult(null);
     setCleanupError("");
-  }, [chapterIndex, chapter?.content]);
+    return () => {
+      cleanupPreviewRunRef.current += 1;
+      if (cleanupPreviewTimerRef.current !== null) {
+        window.clearTimeout(cleanupPreviewTimerRef.current);
+        cleanupPreviewTimerRef.current = null;
+      }
+    };
+  }, [cleanupIdentity]);
 
   const canRunCleanup = Boolean(
     isGenerated &&
@@ -1250,9 +1311,19 @@ function ChapterView({
 
   const runCleanupPreview = useCallback(() => {
     if (!chapter || !canRunCleanup) return;
+    if (cleanupPreviewTimerRef.current !== null) {
+      window.clearTimeout(cleanupPreviewTimerRef.current);
+    }
+    const runId = ++cleanupPreviewRunRef.current;
+    const requestedIdentity = cleanupIdentity;
     setCleanupStatus("running");
     setCleanupError("");
-    window.setTimeout(() => {
+    cleanupPreviewTimerRef.current = window.setTimeout(() => {
+      cleanupPreviewTimerRef.current = null;
+      if (
+        cleanupPreviewRunRef.current !== runId
+        || cleanupIdentityRef.current !== requestedIdentity
+      ) return;
       try {
         const result = runEditorialCleanup({
           title: displayedTitle,
@@ -1274,7 +1345,22 @@ function ChapterView({
         setCleanupStatus("error");
       }
     }, 160);
-  }, [canRunCleanup, chapter, displayedTitle]);
+  }, [canRunCleanup, chapter, cleanupIdentity, displayedTitle]);
+
+  useEffect(() => {
+    if (!chapterToolRequest) return;
+    if (chapterToolRequest.mode === "analysis") {
+      setEditorialMode("analysis");
+      setEditorialOpen(true);
+    } else if (chapterToolRequest.mode === "patch") {
+      setEditorialMode("patch");
+      setEditorialOpen(true);
+    } else {
+      runCleanupPreview();
+    }
+    // A project/chapter identity change must cancel, not replay, the old request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chapterToolRequest?.nonce, chapterToolRequest?.mode]);
 
   const applyCleanupResult = useCallback(() => {
     if (!cleanupResult || !chapter) return;
@@ -1405,7 +1491,7 @@ function ChapterView({
                 <ActionButton icon={<Search className="h-3.5 w-3.5" />} title="Vota" onClick={onEvaluate} disabled={isGenerating || isEvaluating} />
                 <CreditCostBadge operation="chapter_diagnostic" className="max-w-[5.5rem] truncate sm:max-w-none" />
               </div>
-              <ActionButton icon={<RefreshCw className="h-3.5 w-3.5" />} title={t("regenerate")} onClick={onRegenerate} disabled={isGenerating} />
+              <ActionButton icon={<RefreshCw className="h-3.5 w-3.5" />} title={t("regenerate")} onClick={onRegenerate} disabled={isGenerating || isEvaluating} />
               {onNarrateChapter && (
                 <ActionButton
                   icon={<Headphones className="h-3.5 w-3.5" />}
@@ -1417,7 +1503,7 @@ function ChapterView({
 
               {/* Rewrite with levels */}
               <div className="relative flex shrink-0 flex-col items-center gap-1">
-                <button onClick={() => setShowRewriteMenu(!showRewriteMenu)} disabled={isGenerating}
+                <button onClick={() => setShowRewriteMenu(!showRewriteMenu)} disabled={isGenerating || isEvaluating}
                   className="flex h-9 items-center gap-1 rounded-lg px-2.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-30">
                   <Sparkles className="h-3.5 w-3.5" />
                   <ChevronDown className="h-3 w-3" />
@@ -1456,7 +1542,7 @@ function ChapterView({
         </div>
       </div>
 
-      {isGenerated && (
+      {isGenerated && editorialOutcome && (
         <ChapterToolsHub
           outcome={editorialOutcome}
           busy={isGenerating || isEvaluating}
@@ -1482,6 +1568,7 @@ function ChapterView({
       )}
 
       {editorialOpen && isGenerated && onPersistChapterEditorialAnalysis && (
+        <Suspense fallback={null}>
         <ChapterEditorialWorkbench
           project={project}
           chapterIndex={chapterIndex}
@@ -1493,6 +1580,7 @@ function ChapterView({
           onClose={() => setEditorialOpen(false)}
           onOpenFullReport={() => setShowFullReport(true)}
         />
+        </Suspense>
       )}
 
       {cleanupStatus === "running" && (
@@ -1653,7 +1741,7 @@ function ChapterView({
           <div className="scriptora-chapter-brief scriptora-chapter-brief-static">
             <p className="scriptora-chapter-brief-label">Micro brief editoriale</p>
             <ul>
-              {buildMicroChapterBrief(outline.summary, chapterIndex, project.config.language).map((line, index) => (
+              {microChapterBrief.map((line, index) => (
                 <li key={`${index}-${line.slice(0, 12)}`}>{line}</li>
               ))}
             </ul>
@@ -1754,6 +1842,7 @@ function ChapterView({
       {!isGenerating && <div ref={liveAnchorRef} aria-hidden="true" className="h-px" />}
 
       {isGenerated && !premiumWriter && (
+        <Suspense fallback={null}>
         <GenreCoachPanel
           chapterTitle={displayedTitle}
           chapterText={chapter?.content || ""}
@@ -1763,16 +1852,19 @@ function ChapterView({
           project={project}
           chapterIndex={chapterIndex}
         />
+        </Suspense>
       )}
 
       {showFullReport && isGenerated && (
         <FeatureErrorBoundary featureName="Diagnostica capitolo">
+          <Suspense fallback={null}>
           <ChapterIntelligencePanel
             project={project}
             chapterIndex={chapterIndex}
             onClose={() => setShowFullReport(false)}
             onApplyContent={(newContent) => onUpdateContent(newContent)}
           />
+          </Suspense>
         </FeatureErrorBoundary>
       )}
 
@@ -2143,7 +2235,7 @@ const GenerationProgress = memo(function GenerationProgress({
 }: {
   project: BookProject;
   chapterIndex: number;
-  outline?: { title: string; summary: string };
+  outline?: { title: string; summary: string; subchapters?: unknown[] };
   onCancel?: () => void;
   chunkProgress?: ChunkProgress;
   fallbackContent?: string;

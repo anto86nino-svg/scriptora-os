@@ -7,6 +7,10 @@ import { addCreditsToWallet, loadCreditWallet } from "./wallet";
 import { appendLedgerEntry } from "./ledger";
 import { isDevUnlimitedCredits } from "./devMode";
 
+function metadataId(value: unknown): string | number {
+  return typeof value === "string" || typeof value === "number" ? value : "unknown";
+}
+
 export async function chargeChapterGeneration(
   config: BookConfig,
   metadata: Record<string, unknown>,
@@ -14,7 +18,7 @@ export async function chargeChapterGeneration(
   idempotencyKey?: string,
 ): Promise<string> {
   const operation = resolveChapterGenerationOperation(config);
-  const key = idempotencyKey || buildCreditIdempotencyKey("chapter", metadata.projectId, chapterIndex + 1);
+  const key = idempotencyKey || buildCreditIdempotencyKey("chapter", metadataId(metadata.projectId), chapterIndex + 1);
   await requireCreditsAsync(operation, metadata, config.bookLength, key);
   return key;
 }
@@ -24,7 +28,7 @@ export async function chargeRewriteChapter(
   chapterIndex: number,
   idempotencyKey?: string,
 ): Promise<string> {
-  const key = idempotencyKey || buildCreditIdempotencyKey("rewrite", metadata.projectId, chapterIndex + 1);
+  const key = idempotencyKey || buildCreditIdempotencyKey("rewrite", metadataId(metadata.projectId), chapterIndex + 1);
   await requireCreditsAsync("rewrite_chapter", metadata, undefined, key);
   return key;
 }
@@ -37,7 +41,7 @@ export async function chargePremiumOperation(
 ): Promise<void> {
   const key = idempotencyParts
     ? buildCreditIdempotencyKey(operation, ...idempotencyParts)
-    : buildCreditIdempotencyKey(operation, metadata.projectId, Date.now());
+    : buildCreditIdempotencyKey(operation, metadataId(metadata.projectId), Date.now());
   await requireCreditsAsync(operation, metadata, bookLength, key);
 }
 

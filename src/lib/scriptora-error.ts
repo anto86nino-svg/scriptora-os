@@ -83,12 +83,18 @@ export function classifyError(
   }
 
   // ── Auth / JWT ──
-  if (/401|unauthorized|jwt|invalid.*token|not.*authenticated/i.test(msg)) {
+  const errorName = err && typeof err === "object" ? (err as { name?: string }).name : undefined;
+  const errorStatus = err && typeof err === "object" ? (err as { status?: number }).status : undefined;
+  if (
+    errorName === "GenerationAuthError"
+    || errorStatus === 401
+    || /401|unauthorized|jwt|invalid.*token|not.*authenticated|sessione.*(?:scaduta|non valida)|accedi di nuovo|effettua.*login/i.test(msg)
+  ) {
     return {
       category: "auth",
-      title: `Auth failure — ${op}${ch}`,
-      cause: "JWT missing or rejected by edge function",
-      probableFix: "Log out and log back in. If this persists, check VITE_SUPABASE_URL in Vercel env.",
+      title: `Accesso scaduto — ${op}${ch}`,
+      cause: "La sessione non è più valida per usare la generazione AI. Accedi di nuovo per continuare.",
+      probableFix: "Accedi di nuovo: il progetto e i capitoli già salvati restano intatti.",
       fileHint: context?.fileHint ?? "src/lib/generation.ts",
       runtimeData: msg,
     };

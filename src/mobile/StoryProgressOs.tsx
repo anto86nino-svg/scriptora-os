@@ -53,7 +53,7 @@ export function StoryProgressOs({
   return (
     <div
       className={cn(
-        "scriptora-story-progress-os sticky z-20 shrink-0 border-b border-white/[0.08] bg-[#07070b]/95 px-3 py-2 backdrop-blur-xl lg:hidden",
+        "scriptora-story-progress-os sticky top-[3.75rem] z-20 shrink-0 border-b border-white/[0.08] bg-[#07070b]/95 px-3 py-2 backdrop-blur-xl lg:hidden",
         className,
       )}
     >

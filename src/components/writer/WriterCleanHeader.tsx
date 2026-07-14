@@ -1,4 +1,4 @@
-import { ArrowLeft, Focus, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, Feather, Focus, MoreHorizontal } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +9,7 @@ export type WriterCleanHeaderProps = {
   isGenerating?: boolean;
   focusMode?: boolean;
   onFocusMode?: () => void;
+  onNovelistMode?: () => void;
   menuOpen?: boolean;
   onMenuToggle?: () => void;
   className?: string;
@@ -21,6 +22,7 @@ export function WriterCleanHeader({
   isGenerating,
   focusMode,
   onFocusMode,
+  onNovelistMode,
   onMenuToggle,
   className,
 }: WriterCleanHeaderProps) {
@@ -66,6 +68,19 @@ export function WriterCleanHeader({
           title="Focus mode"
         >
           <Focus className="h-4 w-4" />
+        </button>
+      )}
+
+      {onNovelistMode && (
+        <button
+          type="button"
+          onClick={onNovelistMode}
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-amber-300/20 bg-amber-300/[0.08] px-2.5 text-amber-100 transition hover:bg-amber-300/[0.14]"
+          title="Apri la Modalità Romanziere"
+          aria-label="Apri la Modalità Romanziere"
+        >
+          <Feather className="h-4 w-4" />
+          <span className="hidden xl:inline text-xs font-semibold">Romanziere</span>
         </button>
       )}
 

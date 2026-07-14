@@ -2,6 +2,7 @@
  * Auto Bestseller service — wraps SSE streaming + persistence to Supabase.
  */
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import type { AuthorIdentity, BookLength } from "@/types/book";
 
 export interface AutoBestsellerInput {
@@ -204,6 +205,22 @@ function dispatch(
 // Persistence
 // =====================================================================
 
+function toJson(value: unknown): Json {
+  if (value === null) return null;
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return value;
+  if (typeof value === "boolean") return value;
+  if (Array.isArray(value)) return value.map(toJson);
+  if (typeof value === "object") {
+    const json: { [key: string]: Json | undefined } = {};
+    for (const [key, item] of Object.entries(value)) {
+      if (item !== undefined) json[key] = toJson(item);
+    }
+    return json;
+  }
+  return String(value);
+}
+
 export async function createRunRow(input: AutoBestsellerInput, batchId?: string): Promise<string | null> {
   const { getCurrentUserId } = await import("@/services/storageService");
   const userId = getCurrentUserId();
@@ -211,7 +228,7 @@ export async function createRunRow(input: AutoBestsellerInput, batchId?: string)
     .from("auto_bestseller_runs")
     .insert({
       user_id: userId,
-      input: input as unknown as Record<string, unknown>,
+      input: toJson(input),
       batch_id: batchId ?? null,
       status: "running",
     })

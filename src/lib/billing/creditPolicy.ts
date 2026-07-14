@@ -117,7 +117,7 @@ export function getPlanDiscountPercent(planId: CreditPlanId, operation: CreditOp
   return isStudyOperation(operation) ? rules.study : rules.author;
 }
 
-export function resolveChapterGenerationOperation(config: Pick<BookConfig, "bookLength" | "chapterLength">): CreditOperationId {
+export function resolveChapterGenerationOperation(config: Pick<BookConfig, "bookLength">): CreditOperationId {
   const length = config.bookLength || "medium";
   if (length === "short") return "generate_chapter_short";
   if (length === "long" || length === "custom") return "generate_chapter_long";

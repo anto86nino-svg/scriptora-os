@@ -64,7 +64,13 @@ function projectProgress(project?: BookProject | null): number {
 
 function lastChapterLabel(project?: BookProject | null): string {
   if (!project?.chapters?.length) return "Blueprint pronto per iniziare";
-  const lastWrittenIndex = project.chapters.findLastIndex((chapter) => (chapter.content || "").trim().length > 50);
+  let lastWrittenIndex = -1;
+  for (let index = project.chapters.length - 1; index >= 0; index -= 1) {
+    if ((project.chapters[index]?.content || "").trim().length > 50) {
+      lastWrittenIndex = index;
+      break;
+    }
+  }
   if (lastWrittenIndex >= 0) return `Ultimo capitolo: ${lastWrittenIndex + 1}`;
   return "Capitoli pronti da generare";
 }

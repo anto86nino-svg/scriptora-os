@@ -199,11 +199,17 @@ export function saveProject(project: BookProject): void {
 // ---------------------------------------------------------------------------
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let persistInFlight = false;
+let persistDirty = false;
 const PERSIST_DEBOUNCE_MS = 600;
 
 function persistNow() {
-  if (persistInFlight || !memCache) return;
+  if (!memCache) return;
+  if (persistInFlight) {
+    persistDirty = true;
+    return;
+  }
   persistInFlight = true;
+  persistDirty = false;
   const projects = memCache;
   try {
     // Skip backup write during streaming — too costly to read+write the
@@ -220,6 +226,7 @@ function persistNow() {
   // Mirror to IndexedDB (no quota issues, async).
   idbPutAll(projects).catch(() => {}).finally(() => {
     persistInFlight = false;
+    if (persistDirty) schedulePersist();
   });
 }
 

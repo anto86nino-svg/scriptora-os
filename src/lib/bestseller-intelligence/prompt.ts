@@ -68,6 +68,13 @@ export function evaluateChapterBestsellerIntel(params: {
     chapterIndex: params.chapterIndex,
     totalChapters: params.config.numberOfChapters,
     genre: params.config.genre,
-    bookIntelligence: params.config.bookIntelligence,
+    bookIntelligence: params.config.bookIntelligence
+      ? {
+          layers: {
+            writingBrainId: params.config.bookIntelligence.layers.writingBrainId,
+            domain: params.config.bookIntelligence.layers.domain,
+          },
+        }
+      : undefined,
   });
 }

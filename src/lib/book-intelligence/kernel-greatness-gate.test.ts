@@ -20,8 +20,6 @@ describe("kernel greatness pre-forge gate", () => {
         promise: "Una casa infestata diventa il luogo in cui la protagonista deve scegliere cosa ricordare.",
         idea: "Elena torna nella casa della madre scomparsa e scopre che ogni stanza conserva un ricordo che la casa vuole vendicare.",
         plot: "Una restauratrice torna nella casa della madre scomparsa.",
-        conflict: "Scoprire la verità senza diventare parte della casa.",
-        commercialAngle: "Horror gotico con promessa familiare e mistero progressivo.",
       },
     });
 

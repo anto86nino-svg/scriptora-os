@@ -102,7 +102,7 @@ export function BlueprintLiveGenerationPanel({
               <StatusIcon status={item.status} />
               <span className="min-w-0 flex-1 truncate font-medium">{item.label}</span>
               <span className="shrink-0 text-[10px] uppercase tracking-wide opacity-70">
-                {statusLabel(item.status, italianUi, item.label)}
+                {statusLabel(item.status, italianUi)}
               </span>
             </div>
           ))}

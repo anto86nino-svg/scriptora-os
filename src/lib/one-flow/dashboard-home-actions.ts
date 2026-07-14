@@ -274,7 +274,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
 export function buildDashboardPackagingActions(ctx: DashboardActionContext): DashboardHomeAction[] {
   if (!ctx.hasActiveBook) return [];
 
-  return [
+  const actions: DashboardHomeAction[] = [
     {
       id: "pack-cover",
       label: "Cover Studio",
@@ -341,7 +341,9 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       group: "optimization",
       mode: "route",
     },
-  ].filter((action) => isDashboardActionRenderable(action, ctx));
+  ];
+
+  return actions.filter((action) => isDashboardActionRenderable(action, ctx));
 }
 
 export function countExportableProjects(projects: unknown): number {

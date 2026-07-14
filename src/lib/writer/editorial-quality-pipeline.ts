@@ -343,7 +343,7 @@ export function validateFrontBackMatterQuality(
 ): string[] {
   const errors: string[] = [];
   const synopsis = opts.synopsis || opts.overview || "";
-  const entries = Object.entries(matter as Record<string, string>);
+  const entries = Object.entries(matter);
 
   const paragraphFingerprints = new Map<string, string>();
 
@@ -393,7 +393,7 @@ export function applyEditorialQualityToMatterFields<T extends FrontMatter | Back
   matter: T,
   context: EditorialQualityPipelineContext,
 ): T {
-  const result = { ...matter } as Record<string, string>;
+  const result: Record<string, string> = { ...matter };
   for (const [key, value] of Object.entries(matter)) {
     if (!String(value || "").trim()) continue;
     result[key] = runEditorialQualityPipeline(String(value), {
@@ -401,5 +401,5 @@ export function applyEditorialQualityToMatterFields<T extends FrontMatter | Back
       contentKind: context.contentKind,
     }).text;
   }
-  return result as T;
+  return result as unknown as T;
 }

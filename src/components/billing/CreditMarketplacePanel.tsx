@@ -67,10 +67,6 @@ export function CreditMarketplacePanel({ compact = false, checkoutLive = false, 
         ))}
       </div>
 
-      <p className="rounded-xl border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-xs leading-5 text-emerald-50/85">
-        Study OS Pro è separato dai crediti: 20 €/mese con limiti equi anti-abuso.
-      </p>
-
       <section className="rounded-xl border border-sky-300/20 bg-sky-300/10 p-3">
         <div className="mb-3">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-100/80">Sblocca singolo libro</p>

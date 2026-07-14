@@ -2,7 +2,8 @@ import type { BookConfig } from "@/types/book";
 import type { CoherenceReport } from "./types";
 import { inferLevel1FromConfig, getLevel1Definition, isBookTypeAllowedForLevel1, subcategoryMatchesBlockedToken } from "./level1-lock";
 import { resolveGenreDnaProfile } from "./genre-dna";
-import { sanitizeBookConfiguration, type ConfigFix } from "./sanitize";
+import { sanitizeBookConfiguration } from "./sanitize";
+import type { ConfigFix } from "./types";
 
 function scoreFromIssues(issues: string[], base = 100): number {
   return Math.max(0, base - issues.length * 18);

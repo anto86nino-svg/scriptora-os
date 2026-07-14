@@ -84,14 +84,14 @@ describe("SCRIPTORA format dominance regressions", () => {
       genreHint: "Fantasy",
       language: "Italiano",
     });
-    const { payload } = prepareOneFlowWriterPackage(session);
+    const { payload, session: preparedSession } = prepareOneFlowWriterPackage(session);
     expect(payload).toBeTruthy();
 
     const joined = [
       payload!.config.genre,
-      payload!.proposal?.promise ?? "",
-      payload!.proposal?.premise ?? "",
-      payload!.proposal?.characters ?? "",
+      preparedSession.proposal?.promise ?? "",
+      preparedSession.proposal?.premise ?? "",
+      preparedSession.proposal?.characters ?? "",
       payload!.blueprint!.overview,
       payload!.blueprint!.chapterOutlines.map((c) => `${c.title} ${c.summary}`).join(" "),
     ].join(" ");

@@ -36,6 +36,7 @@ export type BookDnaLock = {
   readyForBlueprint: boolean;
   dnaQuality: DnaQualityReport;
   blockedMessage?: string;
+  lockedAt?: string;
 };
 
 export const CONFIDENCE_BLUEPRINT_THRESHOLD = 0.95;

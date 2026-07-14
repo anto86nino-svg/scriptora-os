@@ -4,7 +4,7 @@ Se Scriptora si rompe, non toccare l’originale e non lavorare nel backup.
 
 Usare questo progetto:
 
-cd ~/Desktop/SCRIPTORA_WORKSPACE/01_LAVORO_scriptora-dev-lab
+cd ~/Developer/'Startap scriptora.ac'
 
 ## Controllo stato
 
@@ -30,4 +30,4 @@ open -a "Brave Browser" "https://scriptora-scriptora.vercel.app"
 
 ## Aprire progetto in VS Code
 
-code ~/Desktop/SCRIPTORA_WORKSPACE/01_LAVORO_scriptora-dev-lab
+code ~/Desktop/Scriptora.code-workspace

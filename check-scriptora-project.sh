@@ -1,22 +1,26 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-REAL_PATH="$HOME/Desktop/SCRIPTORA_WORKSPACE/01_LAVORO_scriptora-dev-lab"
-CURRENT_PATH="$(pwd)"
+REAL_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+CURRENT_PATH="$(pwd -P)"
+REAL_PATH_PHYSICAL="$(cd -- "$REAL_PATH" && pwd -P)"
 
 echo "=== SCRIPTORA PROJECT CHECK ==="
 echo "Percorso attuale:"
 echo "$CURRENT_PATH"
 echo ""
 
-if [ "$CURRENT_PATH" != "$REAL_PATH" ]; then
-  echo "⚠️ ATTENZIONE: NON sei nel progetto reale."
+if [ "$CURRENT_PATH" != "$REAL_PATH_PHYSICAL" ]; then
+  echo "⚠️ ATTENZIONE: esegui questo controllo dalla root del progetto."
   echo ""
   echo "Vai qui:"
-  echo "cd $REAL_PATH"
+  printf 'cd %q\n' "$REAL_PATH"
   exit 1
 fi
 
 echo "✅ Sei nel progetto reale corretto."
+echo "Node: $(node --version 2>/dev/null || echo 'non trovato')"
+echo "npm:  $(npm --version 2>/dev/null || echo 'non trovato')"
 echo ""
 echo "Branch:"
 git branch --show-current

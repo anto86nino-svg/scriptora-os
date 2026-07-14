@@ -13,6 +13,7 @@ export type ContinuityCategory =
   | "emotional_arc"
   | "progression"
   | "repetition"
+  | "narrative_corruption"
   | "continuity";
 
 export type ContinuityError = {

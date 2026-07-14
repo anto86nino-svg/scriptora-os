@@ -192,7 +192,7 @@ export function mergeProposalWithExisting<T extends Record<string, string | unde
   fields: (keyof T)[],
 ): T {
   const next = { ...existing };
-  const map: Partial<Record<keyof T, string>> = {
+  const map: Record<string, string> = {
     genre: proposal.genre,
     subgenre: proposal.subgenre,
     tone: proposal.tone,
@@ -203,7 +203,7 @@ export function mergeProposalWithExisting<T extends Record<string, string | unde
   };
   for (const field of fields) {
     const current = String(existing[field] || "").trim();
-    const incoming = String(map[field] || "").trim();
+    const incoming = String(map[String(field)] || "").trim();
     if (!current && incoming) {
       next[field] = incoming as T[keyof T];
     }

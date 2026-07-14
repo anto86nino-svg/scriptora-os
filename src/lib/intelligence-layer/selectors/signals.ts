@@ -51,7 +51,7 @@ export function buildNarrativeSignals(
 
   const family = /self-help|business|manual|saggio|nonfiction/i.test(String(config.genre))
     ? "nonfiction"
-    : "fiction";
+    : "narrative";
   const director = runNarrativeIntelligenceDirector(trimmed, { family, genre: config.genre });
 
   return director.signals.slice(0, 4).map((signal) => ({

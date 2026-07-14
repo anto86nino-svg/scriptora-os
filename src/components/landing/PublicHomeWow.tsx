@@ -1,5 +1,5 @@
 import {
-  BarChart3, BookOpen, FileDown, ImagePlus, Layers3, PenLine, Rocket,
+  BarChart3, FileDown, ImagePlus, Layers3, PenLine, Rocket,
   Search, Sparkles, Target, Users, Wand2,
 } from "lucide-react";
 import type { UILanguage } from "@/lib/i18n";
@@ -10,7 +10,6 @@ type Props = {
 
 const FEATURES = [
   { icon: PenLine, title: { it: "Writer OS", en: "Writer OS" }, text: { it: "Capitoli con memoria narrativa, blueprint e export.", en: "Chapters with narrative memory, blueprint and export." } },
-  { icon: BookOpen, title: { it: "Study OS", en: "Study OS" }, text: { it: "Dispense, PDF e appunti → quiz, flashcard e ripasso guidato.", en: "Notes, PDFs and coursework → quizzes, flashcards and guided review." } },
   { icon: Users, title: { it: "Character Studio", en: "Character Studio" }, text: { it: "Personaggi, relazioni e pressione scenica integrate.", en: "Characters, relationships and scene pressure integrated." } },
   { icon: Layers3, title: { it: "Blueprint intelligente", en: "Smart blueprint" }, text: { it: "Struttura, pubblico e promessa in un piano coerente.", en: "Structure, audience and promise in one coherent plan." } },
   { icon: Wand2, title: { it: "Analysis Pro", en: "Analysis Pro" }, text: { it: "Diagnosi editoriale su ritmo, dialoghi e sottotesto.", en: "Editorial diagnosis on pacing, dialogue and subtext." } },

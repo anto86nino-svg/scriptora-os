@@ -131,6 +131,26 @@ export default function Home() {
     if (which === "terms" && !readTerms) setReadTerms(true);
   };
 
+  const handleDocKeyDown = (which: "privacy" | "terms") => (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const step = Math.max(48, Math.round(el.clientHeight * 0.82));
+    let nextScrollTop: number | null = null;
+
+    if (e.key === "End") nextScrollTop = el.scrollHeight;
+    if (e.key === "Home") nextScrollTop = 0;
+    if (e.key === "PageDown") nextScrollTop = el.scrollTop + step;
+    if (e.key === "PageUp") nextScrollTop = el.scrollTop - step;
+    if (e.key === "ArrowDown") nextScrollTop = el.scrollTop + 48;
+    if (e.key === "ArrowUp") nextScrollTop = el.scrollTop - 48;
+    if (nextScrollTop == null) return;
+
+    e.preventDefault();
+    el.scrollTop = Math.max(0, Math.min(nextScrollTop, el.scrollHeight - el.clientHeight));
+    const reached = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+    if (reached && which === "privacy" && !readPrivacy) setReadPrivacy(true);
+    if (reached && which === "terms" && !readTerms) setReadTerms(true);
+  };
+
   return (
     <>
       <ScriptoraLanding
@@ -191,6 +211,10 @@ export default function Home() {
               <div
                 ref={privacyRef}
                 onScroll={handleDocScroll("privacy")}
+                onKeyDown={handleDocKeyDown("privacy")}
+                tabIndex={0}
+                role="region"
+                aria-label="Privacy Policy scorrevole"
                 className="h-[300px] overflow-y-auto px-6 py-5 text-[13px] leading-relaxed text-foreground/90 whitespace-pre-line"
               >
                 {PRIVACY_POLICY}
@@ -200,6 +224,10 @@ export default function Home() {
               <div
                 ref={termsRef}
                 onScroll={handleDocScroll("terms")}
+                onKeyDown={handleDocKeyDown("terms")}
+                tabIndex={0}
+                role="region"
+                aria-label="Termini di Servizio scorrevoli"
                 className="h-[300px] overflow-y-auto px-6 py-5 text-[13px] leading-relaxed text-foreground/90 whitespace-pre-line"
               >
                 {TERMS_OF_SERVICE}

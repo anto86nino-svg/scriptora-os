@@ -118,7 +118,7 @@ export function trustDestroyerRegistry(): TrustDestroyerItem[] {
       area: "writing",
       status: "fixed",
       path: "src/hooks/useBookEngine.ts",
-      description: "Sync pending/offline visibile in TopBar e GuidedProjectFlow.",
+      description: "Sync pending/offline visibile nelle superfici operative.",
     },
     {
       id: "manuscript-analyzer-heuristic",

@@ -6,6 +6,7 @@ export type ScriptoraUsageEventName =
   | "dashboard_opened"
   | "home_cta_clicked"
   | "book_forge_opened"
+  | "one_book_flow_opened"
   | "title_generated"
   | "blueprint_generation_requested"
   | "blueprint_generated"

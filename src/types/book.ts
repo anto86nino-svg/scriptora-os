@@ -1,4 +1,4 @@
-export type Language = "English" | "Italian" | "Spanish" | "French" | "German";
+export type Language = "English" | "Italian" | "Spanish" | "French" | "German" | "Portuguese";
 export type ChapterLength = "short" | "medium" | "long";
 export type BookLength = "short" | "medium" | "long" | "custom";
 export type Genre =
@@ -32,7 +32,26 @@ export type Genre =
   | "fairy-tale"
   | "poetry"
   | "jokes"
-  | "manual";
+  | "manual"
+  | "crime"
+  | "mystery"
+  | "literary-fiction"
+  | "psychology"
+  | "health"
+  | "gothic"
+  | "gothic horror"
+  | "gothic-thriller"
+  | "dark romance"
+  | "dark gothic romance"
+  | "workbook"
+  | "study"
+  | "narrativa"
+  | "literary fiction"
+  | "self help"
+  | "poesia"
+  | "psicologia"
+  | "Manuale"
+  | "Thriller soprannaturale psicologico";
 export type GenerationPhase = 
   | "idle" 
   | "blueprint" 
@@ -47,6 +66,7 @@ export type GenerationStatus =
   | "completed"
   | "completed_with_warning"
   | "recovered_partial"
+  | "done"
   | "error"
   | "failed_empty"
   | "failed_wrong_chapter"
@@ -99,7 +119,7 @@ export interface SubChapter {
 export interface Chapter {
   title: string;
   content: string;
-  subchapters: SubChapter[];
+  subchapters?: SubChapter[];
   status?: GenerationStatus;
   rewriteInProgress?: boolean;
   lastGenerationId?: string;
@@ -203,9 +223,13 @@ export interface BlueprintIntegrity {
 export interface BookBlueprint {
   overview: string;
   chapterOutlines: BookChapterOutline[];
-  themes: string[];
+  themes?: string[];
   emotionalArc: string;
   integrity?: BlueprintIntegrity;
+  /** Compatibility metadata persisted by older blueprint generators. */
+  genre?: string;
+  category?: string;
+  blueprintIntegrity?: BlueprintIntegrity;
 }
 
 export const CATEGORIES: Record<string, string[]> = {
@@ -263,6 +287,7 @@ export interface BookCharacter {
   vulnerability?: string;
   recurringBehavior?: string;
   personalLanguage?: string;
+  traumaProfile?: string;
 }
 
 export interface AuthorIdentity {
@@ -302,6 +327,9 @@ export type BookConfigStatus = "draft" | "validated" | "approved";
 export interface BookConfig {
   /** Registry id from BOOK_TYPE_REGISTRY — disambiguates Cozy Fantasy vs Epic Fantasy, etc. */
   bookTypeId?: string;
+  bookType?: string;
+  keywords?: string[];
+  plot?: string;
   title: string;
   subtitle: string;
   titleLanguage?: Language;
@@ -471,8 +499,9 @@ export interface BookProject {
   longBookMemory?: import("@/lib/long-book-memory/types").LongBookMemorySnapshot;
   /** Unified narrative memory graph — characters, promises, mysteries, story debt */
   memoryGraph?: import("@/lib/memory-graph/types").MemoryGraphSnapshot;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+  messages?: ChatMessage[];
 }
 
 export interface ChatMessage {

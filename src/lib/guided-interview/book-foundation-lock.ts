@@ -1389,6 +1389,7 @@ export function validateFoundationFieldsFromSeed(seed: {
     lengthPreset: normalizeLengthPreset(ex.bookLength),
     chapterCount: parseChapterCountValue(ex.chapterCount) || LENGTH_PRESET_CONFIGS.medio.chapterCount,
     subchaptersEnabled: ex.subchaptersPreference === "true",
+    tone: clean(ex.emotionalTone || ex.tone) || "emozionale",
     title: clean(ex.bookTitle) || clean(seed.titleIntelligence?.definitiveTitle) || "",
     subtitle: clean(ex.bookSubtitle) || clean(seed.titleIntelligence?.subtitle) || "",
     commercialHook: clean(ex.openingHook) || clean(seed.titleIntelligence?.commercialHook) || "",

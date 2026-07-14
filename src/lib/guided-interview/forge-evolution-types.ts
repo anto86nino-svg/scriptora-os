@@ -9,7 +9,7 @@ export type ForgePhase =
   | "copyright"
   | "review";
 
-export type ForgeCharacterRole = "protagonist" | "antagonist" | "supporting";
+export type ForgeCharacterRole = "protagonist" | "antagonist" | "supporting" | "love_interest";
 
 export type ForgeSceneRole = "opening" | "crisis" | "climax" | "closing";
 
@@ -39,7 +39,7 @@ export type StoryEndingVision = {
 export type StoryRoomState = {
   scenes: ForgeScene[];
   arcBeats: NarrativeArcBeat[];
-  ending?: StoryEndingVision;
+  ending: StoryEndingVision;
 };
 
 export type StoryRoomSection = "characters" | "scenes" | "arcs" | "ending";

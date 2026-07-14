@@ -307,7 +307,7 @@ function buildFormatLockedInference(format: InferredBookFormat, title: string, i
       targetReader: "Lettori che cercano ricette replicabili con ingredienti e tecniche chiare.",
       narrativePromise: "Struttura in ingredienti, ricette, tecniche e menu senza derive narrative.",
       commercialGoal: "Ricettario operativo, leggibile e orientato all'esecuzione.",
-      level1: "manualistica",
+      level1: "manuale",
       confidence: "high",
       suggestedChapters: 12,
     };
@@ -325,7 +325,7 @@ function buildFormatLockedInference(format: InferredBookFormat, title: string, i
       targetReader: "Lettori che vogliono esercizi, tracker e progressione pratica.",
       narrativePromise: "Percorso pratico in schede, esercizi e verifiche senza archi narrativi fiction.",
       commercialGoal: "Workbook ad alta completabilità con risultati misurabili.",
-      level1: "manualistica",
+      level1: "manuale",
       confidence: "high",
       suggestedChapters: 12,
     };
@@ -371,7 +371,7 @@ function buildFormatLockedInference(format: InferredBookFormat, title: string, i
       targetReader: "Lettori memoir in cerca di verità personale e scena vissuta.",
       narrativePromise: "Percorso autobiografico con scene e riflessione, senza fallback generico fiction.",
       commercialGoal: "Memoir con voce personale e promessa chiara.",
-      level1: "memoir",
+      level1: "biografia",
       confidence: "high",
       suggestedChapters: 14,
     }, combined);

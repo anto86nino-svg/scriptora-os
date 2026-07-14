@@ -148,11 +148,28 @@ export function formatProjectUpdatedAt(value?: string): string {
   return new Date(time).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+export function isBlueprintPreviewProject(project: BookProject): boolean {
+  const meta = (project as any).scriptoraProjectMeta;
+  return Boolean(
+    meta?.blueprintPreview === true
+    || (project.blueprint?.chapterOutlines?.length && !project.blueprintApproved),
+  );
+}
+
+export function getProjectsUsingFreeBookSlot(
+  projects: BookProject[],
+  blueprintPreviewProjectIdToUpgrade?: string,
+): BookProject[] {
+  return projects.filter((project) => !(
+    blueprintPreviewProjectIdToUpgrade
+    && project.id === blueprintPreviewProjectIdToUpgrade
+    && project.blueprintApproved !== true
+    && isBlueprintPreviewProject(project)
+  ));
+}
+
 export function getBlueprintPreviewUsage(projects: BookProject[]): number {
-  return projects.filter((project) => {
-    const meta = (project as any).scriptoraProjectMeta;
-    return meta?.blueprintPreview === true || (project.blueprint?.chapterOutlines?.length && !project.blueprintApproved);
-  }).length;
+  return projects.filter(isBlueprintPreviewProject).length;
 }
 
 export function canGenerateBlueprintPreview(planId: string, projects: BookProject[]): BlueprintPreviewGate {

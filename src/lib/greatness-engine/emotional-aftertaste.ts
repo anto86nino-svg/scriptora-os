@@ -19,9 +19,13 @@ export interface EmotionalAftertasteResult {
   strengths: string[];
 }
 
+function countPatternMatches(text: string, patterns: readonly RegExp[]): number {
+  return patterns.reduce((total, pattern) => total + (text.match(pattern)?.length || 0), 0);
+}
+
 export function scoreEmotionalAftertaste(text: string): EmotionalAftertasteResult {
-  const therapyDensity = (text.match(THERAPY_SPEECH) || []).length;
-  const residueSignals = (text.match(AFTERTASTE_SIGNALS) || []).length;
+  const therapyDensity = countPatternMatches(text, THERAPY_SPEECH);
+  const residueSignals = countPatternMatches(text, AFTERTASTE_SIGNALS);
   const explainedEmotion = (text.match(/\b(felt|era|was|capì|understood|realized)\b/gi) || []).length;
   let score = 48 + Math.min(residueSignals, 12) * 4 - therapyDensity * 16 - Math.max(0, explainedEmotion - residueSignals) * 3;
 

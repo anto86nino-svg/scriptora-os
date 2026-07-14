@@ -273,7 +273,7 @@ export function isScaffoldSubchapterBeatTitle(title: string): boolean {
 }
 
 export function syncChapterContentWithSubchapters(
-  chapter: Pick<Chapter, "content" | "subchapters">,
+  chapter: Pick<Chapter, "title" | "content" | "subchapters">,
   chapterIndex = 0,
 ): Chapter {
   const subs = Array.isArray(chapter.subchapters) ? chapter.subchapters : [];

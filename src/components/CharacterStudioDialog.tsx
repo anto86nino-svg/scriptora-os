@@ -30,6 +30,7 @@ import {
   buildDeterministicBookConcept,
 } from "../../supabase/functions/_shared/book-concept-format.ts";
 import { validateFormatPurity } from "../../supabase/functions/_shared/format-purity-engine.ts";
+import type { BookLength, Genre, Language } from "@/types/book";
 
 import {
   SCRIPTORA_CHARACTER_BIBLE_KEY,
@@ -1928,15 +1929,15 @@ function InfoLine({ label, value }: { label: string; value?: unknown }) {
 export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props) {
   const navigate = useNavigate();
   const [idea, setIdea] = useState("");
-  const [genre, setGenre] = useState("literary fiction");
+  const [genre, setGenre] = useState<Genre>("literary-fiction");
   const [subcategory, setSubcategory] = useState("narrativa commerciale");
   const [tone, setTone] = useState("cinematografico");
   const [intensity, setIntensity] = useState("media");
   const [centralDynamic, setCentralDynamic] = useState("segreto familiare");
   const [protagonistType, setProtagonistType] = useState("protagonista ferita ma combattiva");
-  const [language, setLanguage] = useState("Italian");
+  const [language, setLanguage] = useState<Language>("Italian");
   const [bookFormat, setBookFormat] = useState("novel");
-  const [bookLength, setBookLength] = useState("medium");
+  const [bookLength, setBookLength] = useState<BookLength>("medium");
   const [chapterCount, setChapterCount] = useState(20);
   const [subchaptersEnabled, setSubchaptersEnabled] = useState(false);
   const [subchaptersPerChapter, setSubchaptersPerChapter] = useState(3);
@@ -1964,49 +1965,42 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
 
   useEffect(() => {
     const preset = getCharacterStudioPreset(genre);
+    const directionPreset = getCharacterStudioDirectionPreset(genre);
 
     setSubcategory((current) => {
       const normalized = current.trim().toLowerCase();
       const allowed = preset.subgenres.some((item) => item.toLowerCase() === normalized);
-      return allowed ? current : preset.subcategory;
+      const next = allowed ? current : preset.subcategory;
+      return resolveChoiceValue(directionPreset.subgenres, next, directionPreset.subcategory);
     });
 
     setTone((current) => {
       const normalized = current.trim().toLowerCase();
       const allowed = preset.tones.some((item) => item.toLowerCase() === normalized);
-      return allowed ? current : preset.tone;
+      const next = allowed ? current : preset.tone;
+      return resolveChoiceValue(directionPreset.tones, next, directionPreset.tone);
     });
 
     setIntensity((current) => {
       const normalized = current.trim().toLowerCase();
       const allowed = preset.intensities.some((item) => item.toLowerCase() === normalized);
-      return allowed ? current : preset.intensity;
+      const next = allowed ? current : preset.intensity;
+      return resolveChoiceValue(directionPreset.intensities, next, directionPreset.intensity);
     });
 
     setCentralDynamic((current) => {
       const normalized = current.trim().toLowerCase();
       const allowed = preset.dynamics.some((item) => item.toLowerCase() === normalized);
-      return allowed ? current : preset.centralDynamic;
+      const next = allowed ? current : preset.centralDynamic;
+      return resolveChoiceValue(directionPreset.dynamics, next, directionPreset.centralDynamic);
     });
 
     setSpiceLevel(preset.spiceLevel);
     setDarknessLevel(preset.darknessLevel);
     setViolenceLevel(preset.violenceLevel);
 
-    setTargetReader((current) => isAutoPresetText(current, "targetReader") ? preset.targetReader : current);
-    setNarrativePromise((current) => isAutoPresetText(current, "narrativePromise") ? preset.narrativePromise : current);
-  }, [genre]);
-
-  useEffect(() => {
-    const preset = getCharacterStudioDirectionPreset(genre);
-
-    setSubcategory((current) => resolveChoiceValue(preset.subgenres, current, preset.subcategory));
-    setTone((current) => resolveChoiceValue(preset.tones, current, preset.tone));
-    setIntensity((current) => resolveChoiceValue(preset.intensities, current, preset.intensity));
-    setCentralDynamic((current) => resolveChoiceValue(preset.dynamics, current, preset.centralDynamic));
-
-    setTargetReader((current) => isAutoPresetText(current, "targetReader") ? preset.targetReader : current);
-    setNarrativePromise((current) => isAutoPresetText(current, "narrativePromise") ? preset.narrativePromise : current);
+    setTargetReader((current) => isAutoPresetText(current, "targetReader") ? directionPreset.targetReader : current);
+    setNarrativePromise((current) => isAutoPresetText(current, "narrativePromise") ? directionPreset.narrativePromise : current);
   }, [genre]);
 
   useEffect(() => {
@@ -2069,7 +2063,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       if (savedProject) {
         const parsed = JSON.parse(savedProject);
         if (parsed.idea) setIdea(parsed.idea);
-        if (parsed.genre) setGenre(parsed.genre);
+        if (parsed.genre) setGenre(parsed.genre as Genre);
         if (parsed.subcategory) setSubcategory(parsed.subcategory);
         if (parsed.tone) setTone(parsed.tone);
         if (parsed.intensity) setIntensity(parsed.intensity);
@@ -2077,7 +2071,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         if (parsed.protagonistType) setProtagonistType(parsed.protagonistType);
         if (parsed.language) setLanguage(parsed.language);
         if (parsed.bookFormat) setBookFormat(parsed.bookFormat);
-        if (parsed.bookLength) setBookLength(parsed.bookLength);
+        if (parsed.bookLength) setBookLength(parsed.bookLength as BookLength);
         if (parsed.chapterCount) setChapterCount(Number(parsed.chapterCount) || 20);
         if (typeof parsed.subchaptersEnabled === "boolean") setSubchaptersEnabled(parsed.subchaptersEnabled);
         if (parsed.subchaptersPerChapter) setSubchaptersPerChapter(Number(parsed.subchaptersPerChapter) || 3);
@@ -2971,12 +2965,16 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     [bookTitle, bookSubtitle, narrativePromise, idea, genre, subcategory],
   );
 
-  const missingHandoffItems = [
-    !hasIdeaReady && "idea",
-    !hasTitleReady && "titolo",
-    !hasSubtitleReady && "promessa",
-    castRequired && !hasBibleReady && "personaggi",
-  ].filter(Boolean) as string[];
+  const missingHandoffItems = useMemo(
+    () =>
+      [
+        !hasIdeaReady && "idea",
+        !hasTitleReady && "titolo",
+        !hasSubtitleReady && "promessa",
+        castRequired && !hasBibleReady && "personaggi",
+      ].filter(Boolean) as string[],
+    [hasIdeaReady, hasTitleReady, hasSubtitleReady, castRequired, hasBibleReady],
+  );
 
   const primaryCharacterActionLabel = loading
     ? "Sto generando personaggi..."
@@ -3134,7 +3132,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
 
               <div>
                 <Label>Genere principale</Label>
-                <Select value={genre} onValueChange={setGenre}>
+                <Select value={genre} onValueChange={(value) => setGenre(value as Genre)}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {GENRES.map((g) => (
@@ -3160,7 +3158,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
 
               <div>
                 <Label>Lingua</Label>
-                <Select value={language} onValueChange={setLanguage}>
+                <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {LANGUAGES.map((l) => (
@@ -3222,7 +3220,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
                 <span className="text-xs font-semibold text-muted-foreground">Lunghezza</span>
                 <select
                   value={bookLength}
-                  onChange={(event) => setBookLength(event.target.value)}
+                  onChange={(event) => setBookLength(event.target.value as BookLength)}
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
                 >
                   <option value="short">Breve</option>

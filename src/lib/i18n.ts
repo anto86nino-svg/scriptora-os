@@ -85,8 +85,8 @@ const translations: Record<string, Record<UILanguage, string>> = {
   focus_mode: { en: "Focus Mode", it: "Modalità Focus", es: "Modo Enfoque", fr: "Mode Focus", de: "Fokusmodus" },
   exit_focus: { en: "Exit Focus", it: "Esci dal Focus", es: "Salir del Enfoque", fr: "Quitter le Focus", de: "Fokus verlassen" },
 
-  // Molly (your AI writing companion — friendly assistant)
-  ai_coach: { en: "Molly", it: "Molly", es: "Molly", fr: "Molly", de: "Molly" },
+  // On-demand editorial coach
+  ai_coach: { en: "AI Coach", it: "Coach AI", es: "Coach IA", fr: "Coach IA", de: "KI-Coach" },
   analyze: { en: "Analyze", it: "Analizza", es: "Analizar", fr: "Analyser", de: "Analysieren" },
   clarity: { en: "Clarity", it: "Chiarezza", es: "Claridad", fr: "Clarté", de: "Klarheit" },
   emotional_impact: { en: "Emotional Impact", it: "Impatto Emotivo", es: "Impacto Emocional", fr: "Impact Émotionnel", de: "Emotionale Wirkung" },

@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Coins,
   Crown,
-  GraduationCap,
   Sparkles,
   Zap,
 } from "lucide-react";
@@ -15,10 +14,6 @@ import {
   AUTHOR_COST_EXAMPLES,
   AUTHOR_SUBSCRIPTION_PLANS,
   GENERAL_CREDIT_PACKS,
-  STUDENT_COST_EXAMPLES,
-  STUDENT_PACKS_MESSAGE,
-  STUDENT_SUBSCRIPTION_PLANS,
-  TRANSPARENCY_BULLETS,
   UNIVERSAL_CREDITS_MESSAGE,
   type SubscriptionPlanDefinition,
 } from "@/lib/billing/pricingCatalog";
@@ -30,18 +25,20 @@ import { creditSimulationBadge } from "@/lib/billing/devMode";
 import { canDevSimulateCreditPurchase } from "@/lib/billing";
 import { isPaymentsLive } from "@/config/payments";
 import { BetaAccessNotice } from "@/components/ui/BetaAccessNotice";
-import { STUDY_EXTENSION_STATUS, STUDY_USAGE_LIMITS, formatStudyLimitMessage } from "@/lib/study-os/study-limits";
 import { PAY_PER_PROJECT_TIERS } from "@/lib/pay-per-project";
-
-type PricingTab = "authors" | "students";
 
 interface ScriptoraPricingCatalogProps {
   showBackLink?: boolean;
 }
 
+const AUTHOR_TRANSPARENCY_BULLETS = [
+  "Ogni azione mostra il costo in crediti prima di partire.",
+  "Se un'operazione supera il saldo, puoi ricaricare senza cambiare piano.",
+  "Piani, crediti extra e sblocco singolo libro restano chiaramente separati.",
+] as const;
+
 export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricingCatalogProps) {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<PricingTab>("authors");
   const [comingSoonPlan, setComingSoonPlan] = useState<string | null>(null);
   const simulationBadge = creditSimulationBadge();
   const canSimulate = canDevSimulateCreditPurchase();
@@ -53,7 +50,7 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
       return;
     }
 
-    if (!paymentsLive || plan.audience === "students" || !plan.legacyCheckoutPlanId) {
+    if (!paymentsLive || !plan.legacyCheckoutPlanId) {
       toast.message("Checkout non ancora attivo in questa beta.", {
         description: "Puoi continuare a usare Scriptora con i crediti disponibili o richiedere accesso anticipato.",
       });
@@ -89,8 +86,8 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
     });
   };
 
-  const plans = tab === "authors" ? AUTHOR_SUBSCRIPTION_PLANS : STUDENT_SUBSCRIPTION_PLANS;
-  const costExamples = tab === "authors" ? AUTHOR_COST_EXAMPLES : STUDENT_COST_EXAMPLES;
+  const plans = AUTHOR_SUBSCRIPTION_PLANS;
+  const costExamples = AUTHOR_COST_EXAMPLES;
 
   return (
     <div className="space-y-16">
@@ -98,7 +95,7 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
         <BetaAccessNotice
           compact
           title="Beta privata"
-          message="I piani sono pronti per il checkout reale. In questa beta nessun pagamento viene elaborato: crediti autore e Study OS Pro restano predisposti per l'attivazione Stripe/Lemon."
+          message="I piani autore sono pronti per il checkout reale. In questa beta nessun pagamento viene elaborato: abbonamenti e crediti restano predisposti per l'attivazione Stripe/Lemon."
         />
       )}
       <section className="text-center">
@@ -109,8 +106,8 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
           Scegli come creare con Scriptora.
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Puoi iniziare gratis, passare a un piano autore con crediti mensili, oppure scegliere Study OS Pro a 20 €/mese.
-          I crediti extra restano dedicati alle operazioni autore più intensive: capitoli, KDP, cover, export e audit.
+          Puoi iniziare gratis oppure passare a un piano autore con crediti mensili.
+          I crediti extra restano dedicati alle operazioni più intensive: capitoli, KDP, cover, export e audit.
         </p>
         {simulationBadge && (
           <p className="mt-3 text-xs font-semibold text-amber-400">{simulationBadge}</p>
@@ -139,49 +136,24 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
       </section>
 
       <section id="compare-plans" className="space-y-6">
-        <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
-          <div className="inline-flex rounded-xl border border-border bg-card p-1">
-            <button
-              type="button"
-              onClick={() => setTab("authors")}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                tab === "authors" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <BookOpen className="h-4 w-4" /> Scrivere e pubblicare libri
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("students")}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                tab === "students" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <GraduationCap className="h-4 w-4" /> Studiare meglio
-            </button>
-          </div>
-          {tab === "students" && (
-            <p className="max-w-md text-center text-xs text-muted-foreground sm:text-right">
-              Carica libri, PDF, dispense o appunti. Scriptora li trasforma in spiegazioni, riassunti, quiz, flashcard e simulazioni d&apos;esame.
-            </p>
-          )}
+        <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold">
+          <BookOpen className="h-4 w-4" /> Piani per scrivere e pubblicare libri
         </div>
 
-        <div className={`grid gap-4 ${tab === "authors" ? "md:grid-cols-2 xl:grid-cols-5" : "md:grid-cols-2 xl:grid-cols-4"}`}>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           {plans.map((plan) => (
             <PlanCard key={plan.id} plan={plan} onAction={() => void handlePlanAction(plan)} />
           ))}
         </div>
       </section>
 
-      <section id="credit-packs" className="grid gap-8 lg:grid-cols-2 scroll-mt-24">
+      <section id="credit-packs" className="scroll-mt-24">
         <CreditPackSection
           title="Crediti universali"
           message={UNIVERSAL_CREDITS_MESSAGE}
           packs={GENERAL_CREDIT_PACKS}
           onPurchase={handleCreditPack}
         />
-        <StudyLimitsSection />
       </section>
 
       <section className="rounded-2xl border border-sky-300/20 bg-sky-300/10 p-6 sm:p-8">
@@ -221,7 +193,7 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
       <section className="rounded-2xl border border-primary/20 bg-primary/5 p-6 sm:p-8">
         <h2 className="text-lg font-bold">Trasparenza totale</h2>
         <ul className="mt-4 space-y-2">
-          {TRANSPARENCY_BULLETS.map((bullet) => (
+          {AUTHOR_TRANSPARENCY_BULLETS.map((bullet) => (
             <li key={bullet} className="flex items-start gap-2 text-sm text-muted-foreground">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               {bullet}
@@ -259,9 +231,7 @@ function PlanCard({
     ? "Più scelto"
     : plan.badge === "premium"
       ? "Produzione intensiva"
-      : plan.badge === "popular"
-        ? "Sessioni esame"
-        : null;
+      : null;
 
   return (
     <article
@@ -310,36 +280,6 @@ function PlanCard({
         {plan.priceNumeric === 0 ? "Inizia gratis" : "Scegli piano"}
       </button>
     </article>
-  );
-}
-
-function StudyLimitsSection() {
-  return (
-    <div className="rounded-2xl border border-emerald-300/30 bg-emerald-300/5 p-5 sm:p-6">
-      <h2 className="text-lg font-bold text-emerald-100">Study OS Pro · limiti equi</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{STUDENT_PACKS_MESSAGE}</p>
-      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-        <LimitItem label="Sessioni mensili" value={STUDY_USAGE_LIMITS.monthlySessions} />
-        <LimitItem label="Materiali/settimana" value={STUDY_USAGE_LIMITS.weeklyMaterials} />
-        <LimitItem label="Elaborazioni AI/mese" value={STUDY_USAGE_LIMITS.monthlyAiOperations} />
-        <LimitItem label="Upload massimo" value={`${STUDY_USAGE_LIMITS.maxUploadMb} MB`} />
-      </dl>
-      <p className="mt-4 rounded-xl border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-xs leading-5 text-emerald-50/85">
-        {formatStudyLimitMessage("it", 9, "hard")}
-      </p>
-      <p className="mt-3 text-xs text-muted-foreground">
-        {STUDY_EXTENSION_STATUS.message}
-      </p>
-    </div>
-  );
-}
-
-function LimitItem({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-xl border border-emerald-300/15 bg-background/45 px-3 py-2.5">
-      <dt className="text-[11px] uppercase tracking-[0.12em] text-emerald-100/60">{label}</dt>
-      <dd className="mt-1 text-lg font-black tabular-nums text-emerald-100">{value}</dd>
-    </div>
   );
 }
 

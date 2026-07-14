@@ -1,5 +1,6 @@
 import { evaluateBestsellerChapter } from "@/lib/bestseller-intelligence";
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
+import type { BookProject } from "@/types/book";
 import type {
   BestsellerAction,
   BestsellerRadarResult,

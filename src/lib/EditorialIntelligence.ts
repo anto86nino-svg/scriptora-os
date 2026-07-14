@@ -351,27 +351,28 @@ const EDITORIAL_GENRE_PROFILES: Partial<Record<Genre, EditorialGenreProfile>> = 
       pacing: 0.14,
     },
   },
-  "default": {
-    genre: "self-help",
-    label: "General",
-    expectations: [
-      "A clear editorial focus and readable pacing.",
-      "Stronger specificity instead of generic phrasing.",
-      "A sense that the manuscript has a distinct voice.",
-      "Editorial coherence that matches the material's category."
-    ],
-    scoreWeights: {
-      hook: 0.15,
-      clarity: 0.15,
-      originality: 0.15,
-      emotionalImpact: 0.15,
-      pacing: 0.15,
-    },
+};
+
+const DEFAULT_EDITORIAL_GENRE_PROFILE: EditorialGenreProfile = {
+  genre: "self-help",
+  label: "General",
+  expectations: [
+    "A clear editorial focus and readable pacing.",
+    "Stronger specificity instead of generic phrasing.",
+    "A sense that the manuscript has a distinct voice.",
+    "Editorial coherence that matches the material's category."
+  ],
+  scoreWeights: {
+    hook: 0.15,
+    clarity: 0.15,
+    originality: 0.15,
+    emotionalImpact: 0.15,
+    pacing: 0.15,
   },
 };
 
 export function getEditorialGenreProfile(genre: Genre): EditorialGenreProfile {
-  return EDITORIAL_GENRE_PROFILES[genre] || EDITORIAL_GENRE_PROFILES["default"]!;
+  return EDITORIAL_GENRE_PROFILES[genre] || DEFAULT_EDITORIAL_GENRE_PROFILE;
 }
 
 function editorialWarningPenalty(type: EditorialWarning["type"]): number {

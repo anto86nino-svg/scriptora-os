@@ -25,6 +25,7 @@ import { BookFoundationFlowPanel } from "./BookFoundationFlowPanel";
 
 type GuidedInterviewPanelProps = {
   selectedGenre?: string;
+  initialIdea?: string;
   language?: string;
   penName?: string;
   authorName?: string;
@@ -42,6 +43,7 @@ type GuidedInterviewPanelProps = {
 
 export function GuidedInterviewPanel({
   selectedGenre,
+  initialIdea,
   language = "Italian",
   penName,
   authorName,
@@ -61,6 +63,7 @@ export function GuidedInterviewPanel({
 
   const ctrl = useGuidedInterviewController({
     selectedGenre,
+    initialIdea,
     language,
     penName,
     authorName,

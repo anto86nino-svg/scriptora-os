@@ -8,7 +8,7 @@ export type PublicTestimonial = {
   role: string;
   quote: string;
   metric: string;
-  kind: "writer" | "student";
+  kind: "writer";
   isPlaceholder: true;
 };
 
@@ -27,16 +27,6 @@ const PLACEHOLDER_EXAMPLES: PublicTestimonial[] = [
     isPlaceholder: true,
   },
   {
-    id: "s1",
-    avatar: "/landing/avatars/demo-student-1.svg",
-    name: "Luca M.",
-    role: "Studente medicina · 3° anno",
-    quote: "Carico le dispense e in pochi minuti ho quiz e flashcard pronti. Finalmente studio con metodo, non a caso.",
-    metric: "Ripasso esami",
-    kind: "student",
-    isPlaceholder: true,
-  },
-  {
     id: "w2",
     avatar: "/landing/avatars/demo-writer-2.svg",
     name: "Marco L.",
@@ -46,47 +36,27 @@ const PLACEHOLDER_EXAMPLES: PublicTestimonial[] = [
     kind: "writer",
     isPlaceholder: true,
   },
-  {
-    id: "s2",
-    avatar: "/landing/avatars/demo-student-2.svg",
-    name: "Sara B.",
-    role: "Giurisprudenza · università",
-    quote: "Perfetto per PDF lunghi e appunti caotici: riassunto chiaro, domande aperte e simulazione d'esame.",
-    metric: "Sessioni studio",
-    kind: "student",
-    isPlaceholder: true,
-  },
-  {
-    id: "s3",
-    avatar: "/landing/avatars/demo-student-3.svg",
-    name: "Elena R.",
-    role: "Liceo scientifico · maturità",
-    quote: "Uso Study OS per ripassare prima dei compiti in classe. Sembra fatto per studenti veri, non solo per autori.",
-    metric: "Quiz e verifica",
-    kind: "student",
-    isPlaceholder: true,
-  },
 ];
 
 const headerCopy = {
   it: {
     label: "Voci dalla beta",
-    title: "Autori che pubblicano. Studenti che imparano.",
-    text: "Scriptora non è solo scrittura: è anche studio guidato per ogni indirizzo — università, liceo, medicina, giurisprudenza, STEM.",
+    title: "Autori che portano il libro fino alla pubblicazione.",
+    text: "Scriptora tiene insieme voce, struttura, continuità narrativa e preparazione editoriale in un unico flusso autore.",
     badge: "Esempio beta / avatar illustrato",
     cta: "Prova gratis Scriptora",
     statWriters: "Author Studio",
-    statStudents: "Study OS",
+    statMemory: "Memoria narrativa",
     statOne: "1 piattaforma",
   },
   en: {
     label: "Beta voices",
-    title: "Authors who publish. Students who learn.",
-    text: "Scriptora is not only writing: guided study for every path — university, high school, medicine, law, STEM.",
+    title: "Authors who carry the book all the way to publication.",
+    text: "Scriptora keeps voice, structure, narrative continuity and editorial preparation in one author workflow.",
     badge: "Beta example / illustrated avatar",
     cta: "Try Scriptora free",
     statWriters: "Author Studio",
-    statStudents: "Study OS",
+    statMemory: "Narrative memory",
     statOne: "1 platform",
   },
 } as const;
@@ -108,7 +78,7 @@ export function PublicTestimonials({ lang, onEnter }: Props) {
         <p>{c.text}</p>
         <div className="scriptora-testimonials-stats">
           <span>{c.statWriters}</span>
-          <span>{c.statStudents}</span>
+          <span>{c.statMemory}</span>
           <span className="is-accent">{c.statOne}</span>
         </div>
       </div>
@@ -125,7 +95,7 @@ export function PublicTestimonials({ lang, onEnter }: Props) {
         {cards.map((item) => (
           <article
             key={item.id}
-            className={`scriptora-testimonial-card ${item.kind === "student" ? "is-student" : "is-writer"}`}
+            className="scriptora-testimonial-card is-writer"
           >
             <span className="scriptora-testimonial-placeholder-badge">{c.badge}</span>
             <div className="scriptora-testimonial-person">
@@ -157,7 +127,7 @@ export function PublicTestimonials({ lang, onEnter }: Props) {
       </div>
 
       <div className="scriptora-testimonials-cta-bar">
-        <p>{lang === "it" ? "Scrivi il libro o studia meglio — entra con un solo account." : "Write your book or study smarter — one account."}</p>
+        <p>{lang === "it" ? "Porta il tuo libro dall'idea alla pubblicazione con un solo account." : "Take your book from idea to publication with one account."}</p>
         <button type="button" onClick={onEnter} className="scriptora-landing-primary">
           {c.cta}
           <ArrowRight className="h-4 w-4" />

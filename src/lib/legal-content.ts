@@ -76,17 +76,16 @@ Ultimo aggiornamento: ${LEGAL_UPDATED}
 Utilizzando SCRIPTORA accetti integralmente questi Termini. Se non li accetti, non usare il servizio.
 
 2. Descrizione del servizio
-SCRIPTORA è una piattaforma SaaS che permette di scrivere, analizzare, modificare, impaginare ed esportare libri tramite modelli di intelligenza artificiale. Include anche strumenti Study OS per trasformare materiali di studio in riassunti, quiz, flashcard, mappe, simulazioni e attestati.
+SCRIPTORA è una piattaforma SaaS che permette di progettare, scrivere, analizzare, modificare, impaginare ed esportare libri tramite modelli di intelligenza artificiale e strumenti editoriali assistivi.
 
 3. Account ed età minima
 Devi avere almeno 16 anni per usare SCRIPTORA. Sei responsabile della riservatezza delle tue credenziali e di ogni attività svolta dal tuo account.
 
 4. Piani, crediti e pagamenti
-SCRIPTORA usa crediti universali per azioni AI, generazione, analisi, studio, cover e publishing. I piani Free, Author, Student e i pacchetti crediti sono descritti nella pagina Pricing e mostrano prezzo, crediti inclusi e condizioni prima dell'acquisto.
+SCRIPTORA usa crediti universali per azioni AI, generazione, analisi, cover e publishing. I piani Free, i piani autore e i pacchetti crediti sono descritti nella pagina Pricing e mostrano prezzo, crediti inclusi e condizioni prima dell'acquisto.
 
 - Free: include un saldo mensile limitato per provare il servizio.
 - Piani autore: includono crediti mensili, sconti e strumenti orientati a scrittura, packaging e pubblicazione.
-- Piani studente: includono crediti mensili e strumenti orientati a riassunti, quiz, simulazioni e piani studio.
 - Pacchetti crediti: permettono di ricaricare senza cambiare piano.
 
 In caso di differenza tra questa sintesi e la pagina Pricing o il checkout Stripe, prevalgono i dettagli mostrati immediatamente prima del pagamento. I pagamenti sono gestiti tramite Stripe. Gli abbonamenti si rinnovano automaticamente fino a cancellazione.
@@ -138,7 +137,7 @@ SCRIPTORA usa cookie o storage tecnici necessari per login, consenso legale, sic
 Non usiamo cookie di profilazione di terze parti senza consenso esplicito. Se verranno introdotti strumenti analytics o marketing non essenziali, verrà richiesto consenso separato dove previsto.
 
 3. Local storage
-Alcune preferenze, progetti locali, stato Study OS, consenso e impostazioni di interfaccia possono essere salvati nel browser dell'utente per migliorare continuità e prestazioni.
+Alcune preferenze, progetti editoriali locali, stato del workspace, consenso e impostazioni di interfaccia possono essere salvati nel browser dell'utente per migliorare continuità e prestazioni.
 
 4. Gestione
 Puoi cancellare cookie e dati locali dalle impostazioni del browser. Alcune funzioni potrebbero perdere stato o richiedere nuovo accesso.
@@ -150,7 +149,7 @@ SCRIPTORA — Credits Policy
 Ultimo aggiornamento: ${LEGAL_UPDATED}
 
 1. Cosa sono i crediti
-I crediti sono l'unità operativa usata da SCRIPTORA per bilanciare costi AI delle funzioni autore: generazione testo, analisi, cover, packaging, export avanzati e strumenti commerciali. Study OS Pro è presentato come abbonamento separato con limiti equi di utilizzo, salvo eventuali estensioni dichiarate prima dell'acquisto.
+I crediti sono l'unità operativa usata da SCRIPTORA per bilanciare costi AI delle funzioni autore: generazione testo, analisi, cover, packaging, export avanzati e strumenti commerciali.
 
 2. Trasparenza costo
 Quando una funzione consuma crediti, l'app deve mostrare o stimare il costo prima dell'azione quando tecnicamente possibile. I costi possono variare in base a lunghezza, modello AI, retry, immagini, export e complessità.
@@ -159,7 +158,7 @@ Quando una funzione consuma crediti, l'app deve mostrare o stimare il costo prim
 Gli abbonamenti includono crediti mensili. I pacchetti crediti aggiungono saldo extra senza obbligare a cambiare piano. I crediti promozionali o beta possono avere limiti, scadenze o condizioni dedicate.
 
 4. Errori e fallimenti
-SCRIPTORA può bloccare o rimborsare operazioni che non consegnano valore utilizzabile quando il sistema rileva un fallimento tecnico. Non sono garantiti risultati editoriali, commerciali, scolastici o di vendita.
+SCRIPTORA può bloccare o rimborsare operazioni che non consegnano valore utilizzabile quando il sistema rileva un fallimento tecnico. Non sono garantiti risultati editoriali, commerciali o di vendita.
 
 5. Abusi
 SCRIPTORA può limitare o sospendere uso, crediti o account in caso di abuso, automazioni aggressive, multi-account fraudolento, scraping o tentativi di aggirare i limiti.
@@ -174,13 +173,13 @@ Ultimo aggiornamento: ${LEGAL_UPDATED}
 SCRIPTORA usa modelli AI e motori deterministici di supporto. I risultati possono contenere errori, omissioni, incongruenze, bias, informazioni non aggiornate o contenuti non adatti al tuo caso specifico.
 
 2. Responsabilità utente
-Sei responsabile di verificare, modificare e approvare testi, materiali studio, metadata, cover, export, descrizioni commerciali e contenuti pubblicati.
+Sei responsabile di verificare, modificare e approvare testi, metadata, cover, export, descrizioni commerciali e contenuti pubblicati.
 
 3. Nessuna consulenza professionale
 SCRIPTORA non sostituisce consulenza legale, fiscale, medica, psicologica, accademica o editoriale professionale. Per decisioni ad alto impatto consulta un professionista qualificato.
 
-4. Studio e valutazioni
-Quiz, voti, attestati e feedback Study OS sono strumenti di autovalutazione e preparazione. Non hanno valore scolastico, universitario o certificativo ufficiale salvo accordi separati espliciti.
+4. Revisione editoriale
+Valutazioni, score e suggerimenti generati da SCRIPTORA sono strumenti assistivi. Richiedono sempre revisione e approvazione dell'autore prima della pubblicazione.
 
 5. Pubblicazione e mercato
 Score, radar, keyword, KDP readiness e suggerimenti commerciali sono analisi assistive. Non garantiscono vendite, ranking, approvazione KDP o successo editoriale.

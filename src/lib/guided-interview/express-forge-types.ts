@@ -20,7 +20,7 @@ export type ExpressBookFormat =
   | "mixed_or_unknown";
 
 export type ExpressForgeInput = {
-  bookFormat: ExpressBookFormat;
+  bookFormat?: ExpressBookFormat;
   genre: string;
   language: string;
   titleMode: ExpressTitleMode;

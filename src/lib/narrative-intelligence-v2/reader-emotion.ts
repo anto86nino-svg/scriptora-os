@@ -14,7 +14,7 @@ function levelFromScore(score: number): ReaderEmotionLevel {
   return "low";
 }
 
-function isFictionConfig(config?: BookConfig): boolean {
+function isFictionConfig(config?: Partial<BookConfig>): boolean {
   const domain = config?.bookIntelligence?.layers?.domain;
   const brainId = config?.bookIntelligence?.layers?.writingBrainId || "";
   if (domain === "nonfiction") return false;
@@ -22,17 +22,17 @@ function isFictionConfig(config?: BookConfig): boolean {
   return !/manual|horticultural|self-help|productivity|business|education|cookbook|technical|study|finance|health|fitness|parenting|biography/.test(brainId);
 }
 
-function isRomanceBrain(config?: BookConfig): boolean {
+function isRomanceBrain(config?: Partial<BookConfig>): boolean {
   const brainId = config?.bookIntelligence?.layers?.writingBrainId || "";
   return /romance|dark-romance/.test(brainId) || config?.genre === "romance";
 }
 
-function isThrillerBrain(config?: BookConfig): boolean {
+function isThrillerBrain(config?: Partial<BookConfig>): boolean {
   const brainId = config?.bookIntelligence?.layers?.writingBrainId || "";
   return /thriller|crime|mystery|suspense/.test(brainId) || /thriller|mystery|crime/.test(config?.genre || "");
 }
 
-function isUtilityBrain(config?: BookConfig): boolean {
+function isUtilityBrain(config?: Partial<BookConfig>): boolean {
   const brainId = config?.bookIntelligence?.layers?.writingBrainId || "";
   return /horticultural|manual|practical|cookbook|technical|education/.test(brainId);
 }
@@ -40,7 +40,7 @@ function isUtilityBrain(config?: BookConfig): boolean {
 export function simulateReaderEmotion(input: {
   content: string;
   chapterIndex: number;
-  config?: BookConfig;
+  config?: Partial<BookConfig>;
   scenePurpose?: ChapterScenePurposeSnapshot;
   totalChapters?: number;
 }): ReaderEmotionSnapshot {
@@ -51,7 +51,14 @@ export function simulateReaderEmotion(input: {
     chapterIndex: input.chapterIndex,
     totalChapters: input.totalChapters,
     genre: input.config?.genre,
-    bookIntelligence: input.config?.bookIntelligence,
+    bookIntelligence: input.config?.bookIntelligence
+      ? {
+          layers: {
+            writingBrainId: input.config.bookIntelligence.layers.writingBrainId,
+            domain: input.config.bookIntelligence.layers.domain,
+          },
+        }
+      : undefined,
   });
 
   const bestseller = bestsellerRaw ?? {
@@ -79,8 +86,8 @@ export function simulateReaderEmotion(input: {
 
   const telemetry = getNarrativeTelemetrySnapshot({
     config: {
-      genre: (input.config?.genre || "literary-fiction") as any,
-      bookIntelligence: input.config?.bookIntelligence as any,
+      genre: input.config?.genre || "literary-fiction",
+      bookIntelligence: input.config?.bookIntelligence,
     },
     currentText: text,
   });
@@ -103,7 +110,7 @@ const openQuestions = (text.match(/\?/g) || []).length;
       (fiction ? 10 : 0),
   );
 
-  let confusion = clamp(
+  const confusion = clamp(
     (editorial.warnings.filter(w => w.type === "weak_subtext").length * 12) +
       (text.match(/\b(confus|unclear|non cap|didn't understand|lost)\b/gi)?.length || 0) * 8,
   );
@@ -128,12 +135,12 @@ const openQuestions = (text.match(/\?/g) || []).length;
       emotionalTension * 0.15,
   );
 
-  let emotionalFatigue = clamp(
+  const emotionalFatigue = clamp(
     (editorial.warnings.filter(w => w.type === "emotional_redundancy").length * 14) +
       (input.scenePurpose?.scenes.filter(s => s.primaryPurpose === "emotional_progression").length || 0) * 6,
   );
 
-  let compulsiveReadability = clamp(
+  const compulsiveReadability = clamp(
     bestseller.scores.compulsiveReadability * 0.5 +
       bestseller.scores.readerRetention * 0.3 +
       (100 - boredomRisk) * 0.2,

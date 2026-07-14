@@ -213,7 +213,7 @@ export function VoiceStudioDialog({
         ? initialChapterIndex
         : firstPlayableChapter;
       setChapterIndex(destination);
-    } else if (!selectedProject.chapters[chapterIndex] || !(selectedProject.chapters[chapterIndex]?.content || "").trim().length > 25) {
+    } else if (!selectedProject.chapters[chapterIndex] || (selectedProject.chapters[chapterIndex]?.content || "").trim().length <= 25) {
       setChapterIndex(firstPlayableChapter);
     }
 
@@ -671,6 +671,7 @@ export function VoiceStudioDialog({
       Spanish: (lower.match(/\b(que|para|con|esta|este|los|las|una|por|como|del|más|muy)\b/g) || []).length,
       French: (lower.match(/\b(que|pour|avec|cet|cette|les|des|une|pas|dans|est|qui)\b/g) || []).length,
       German: (lower.match(/\b(der|die|das|und|nicht|ist|mit|für|ein|eine|zu|im|auf)\b/g) || []).length,
+      Portuguese: (lower.match(/\b(que|para|com|uma|não|por|como|mais|dos|das|está|são)\b/g) || []).length,
     };
 
     const charSignals: Record<Language, RegExp> = {
@@ -679,6 +680,7 @@ export function VoiceStudioDialog({
       Spanish: /[áéíóúñ¿¡]/,
       French: /[àâçéèêëîïôûùüÿœæ]/,
       German: /[äöüß]/,
+      Portuguese: /[ãõáéíóúç]/,
     };
 
     Object.entries(charSignals).forEach(([lang, pattern]) => {
@@ -1774,4 +1776,3 @@ export function VoiceStudioDialog({
     </Dialog>
   );
 }
-

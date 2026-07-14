@@ -50,7 +50,14 @@ export function getLayerPanel(type: string, layer?: CoverLayer): CoverPanel {
 export function getViewClipStyle(
   mode: CoverViewMode,
   spec: CoverSpecRects,
-): { objectPosition?: string; objectFit?: "contain"; transform?: string; width?: string; height?: string } | null {
+): {
+  objectPosition?: string;
+  objectFit?: "contain";
+  transform?: string;
+  transformOrigin?: string;
+  width?: string;
+  height?: string;
+} | null {
   if (!spec.isPrint || mode === "open-book" || mode === "paperback") return null;
 
   const { width, height, frontRect, backRect, spineRect } = spec;

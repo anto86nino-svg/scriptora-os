@@ -1,4 +1,3 @@
-import { STUDY_OS_PRO_PLAN, STUDY_USAGE_LIMITS } from "@/lib/study-os/study-limits";
 import type { CreditPlanId } from "./types";
 
 export type PricingAudience = "authors" | "students";
@@ -14,6 +13,7 @@ export interface SubscriptionPlanDefinition {
   includedUsageLabel?: string;
   tagline: string;
   promise: string;
+  description?: string;
   features: string[];
   badge?: "recommended" | "popular" | "premium";
   /** Legacy Stripe/payments plan id — TODO: map Stripe price id in env/config. */
@@ -108,9 +108,9 @@ export const STUDENT_SUBSCRIPTION_PLANS: SubscriptionPlanDefinition[] = [
   {
     id: "study_os_pro",
     audience: "students",
-    name: STUDY_OS_PRO_PLAN.name,
-    priceLabel: `€${STUDY_OS_PRO_PLAN.priceEurMonthly}`,
-    priceNumeric: STUDY_OS_PRO_PLAN.priceEurMonthly,
+    name: "Study OS Pro",
+    priceLabel: "€20",
+    priceNumeric: 20,
     period: "/mese",
     monthlyCredits: 0,
     includedUsageLabel: "Uso Study incluso con limiti equi",
@@ -118,9 +118,9 @@ export const STUDENT_SUBSCRIPTION_PLANS: SubscriptionPlanDefinition[] = [
     promise: "Study OS completo a prezzo semplice, senza crediti complicati per lo studente base.",
     features: [
       "20 €/mese, rinnovo mensile",
-      `${STUDY_USAGE_LIMITS.monthlySessions} sessioni Study/mese`,
-      `${STUDY_USAGE_LIMITS.weeklyMaterials} materiali/settimana`,
-      `${STUDY_USAGE_LIMITS.monthlyAiOperations} elaborazioni AI Study/mese`,
+      `120 sessioni Study/mese`,
+      `40 materiali/settimana`,
+      `240 elaborazioni AI Study/mese`,
       "PDF, DOCX, TXT, MD, EPUB e testo incollato",
       "OCR reale se supportato dal browser",
       "Modalità rapida locale se serve completare l'elaborazione",

@@ -207,11 +207,11 @@ export function resolveDominantFormat(input: DominanceInput): DominantFormatReso
   return { dominantFormat: null, source: "none", profile: null };
 }
 
-export function applyFormatDominance<T extends MutableShape>(input: T): T {
+export function applyFormatDominance<T extends MutableShape>(input: T): T & DominanceInput {
   const resolved = resolveDominantFormat(input);
-  if (!resolved.profile) return input;
+  if (!resolved.profile) return input as T & DominanceInput;
 
-  const next = { ...input } as T;
+  const next = { ...input } as T & DominanceInput;
   const profile = resolved.profile;
   const existingGenre = normalize(next.genre);
   const authorLocked = Boolean(input.authorFormatLocked);

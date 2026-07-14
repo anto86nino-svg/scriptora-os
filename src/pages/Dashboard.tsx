@@ -55,7 +55,6 @@ import {
   scrollElementIntoViewWithOffset,
 } from "@/lib/one-flow/dashboard-panel-scroll";
 import type { ActiveDashboardTool } from "@/lib/one-flow/dashboard-active-tool";
-import { activeToolGuideRoute } from "@/lib/one-flow/dashboard-active-tool";
 import {
   MobileDashboardCreditPill,
   MobileDashboardMoreMenu,
@@ -92,6 +91,10 @@ import {
   buildProjectHandoffSeed,
   saveProjectHandoffSeed,
 } from "@/lib/book-forge/project-handoff";
+import {
+  clearForgeDnaLock,
+  clearForgeInterviewDraft,
+} from "@/lib/guided-interview/interview-state";
 
 const ScriptoraSettingsHub = lazy(() =>
   import("@/components/settings/ScriptoraSettingsHub").then((m) => ({ default: m.ScriptoraSettingsHub })),
@@ -202,6 +205,7 @@ export default function Dashboard() {
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   const currentLang = useUILanguage();
   const [desktopOverrideActive, setDesktopOverrideActive] = useState(() => isDesktopModeOverrideActive());
+  const projectLoadSeqRef = useRef(0);
   const closeAllDashboardTools = useCallback(() => {
     setActiveDashboardTool(null);
     setBookForgeHandoff(null);
@@ -313,9 +317,19 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    let mounted = true;
+    const loadScopedDashboardProjects = () => {
+      const loadSeq = ++projectLoadSeqRef.current;
+      const applyProjects = (fresh: BookProject[]) => {
+        if (!mounted || projectLoadSeqRef.current !== loadSeq) return;
+        setProjects(fresh);
+      };
+      loadProjects(applyProjects).then(applyProjects);
+    };
+
     // Optimistic load: shows local projects immediately, refreshes from server
     // in the background. Eliminates the visible "frozen" gap on first paint.
-    loadProjects((fresh) => setProjects(fresh)).then(setProjects);
+    loadScopedDashboardProjects();
     try {
       const raw = sessionStorage.getItem("scriptora-active-run");
       if (raw) setActiveRun(JSON.parse(raw));
@@ -323,12 +337,17 @@ export default function Dashboard() {
 
     // Re-load when DEV MODE is toggled — projects are scoped per environment.
     const onDevChange = () => {
+      projectLoadSeqRef.current += 1;
       setProjects([]);
       setActiveRun(null);
-      loadProjects((fresh) => setProjects(fresh)).then(setProjects);
+      loadScopedDashboardProjects();
     };
     window.addEventListener("scriptora-dev-mode-change", onDevChange);
-    return () => window.removeEventListener("scriptora-dev-mode-change", onDevChange);
+    return () => {
+      mounted = false;
+      projectLoadSeqRef.current += 1;
+      window.removeEventListener("scriptora-dev-mode-change", onDevChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -343,20 +362,6 @@ export default function Dashboard() {
       window.removeEventListener("storage", refreshAuthors);
     };
   }, []);
-
-  useEffect(() => {
-    const route =
-      activeDashboardTool ? activeToolGuideRoute(activeDashboardTool) :
-      showAdvancedSettings ? "settings" :
-      showBetaDialog ? "beta" :
-      showDevUnlock ? "usage" :
-      null;
-
-    window.dispatchEvent(new CustomEvent("scriptora-guide-context", { detail: { route } }));
-    return () => {
-      window.dispatchEvent(new CustomEvent("scriptora-guide-context", { detail: { route: null } }));
-    };
-  }, [activeDashboardTool, showAdvancedSettings, showBetaDialog, showDevUnlock]);
 
   // Reset intent if user edits the idea after detection
   useEffect(() => {
@@ -395,6 +400,8 @@ export default function Dashboard() {
       return;
     }
     closeAllDashboardTools();
+    clearForgeInterviewDraft();
+    clearForgeDnaLock();
     const seed = normalizeHomeIdeaOverride(ideaOverride) || readHomeIdeaSeed();
     saveHomeCreationDraft({ idea: seed, genreHint });
     setBookForgeHandoff(null);
@@ -434,6 +441,8 @@ export default function Dashboard() {
       } catch {
         // Storage can be unavailable in private/mobile webviews.
       }
+      clearForgeInterviewDraft();
+      clearForgeDnaLock();
     }
 
     setBookForgeHandoff(resolvedHandoff);
@@ -635,6 +644,7 @@ export default function Dashboard() {
             tone: "pratico, operativo, guidato",
             promise: "Trasformare un metodo in esercizi e schede operative.",
             idea: "Workbook con tracker, esercizi graduati e schede operative settimanali.",
+            subtitle: "Un percorso pratico guidato",
           }
         : {
             bookType: "memoir",
@@ -647,6 +657,7 @@ export default function Dashboard() {
             tone: "riflessivo, intimo, autentico",
             promise: "Raccontare un percorso interiore con verità personale.",
             idea: "Memoir di trasformazione interiore con memoria viva e arco riflessivo.",
+            subtitle: "Una storia vera di trasformazione",
           };
 
     openNewBookGuarded(buildBookForgeHandoff("preset-forge", {
@@ -793,7 +804,7 @@ typeof crypto.randomUUID === "function"
         localStorage.getItem(SCRIPTORA_CHARACTER_BIBLE_KEY) ||
         "";
 
-      const shouldAttachCharacters = String(bible || "").trim() && isNarrativeGenreForCharacters(pending?.genre || config.genre);
+      const shouldAttachCharacters = Boolean(String(bible || "").trim()) && isNarrativeGenreForCharacters(String(pending?.genre || config.genre));
 
       if (shouldAttachCharacters) {
         finalConfig = {
@@ -802,8 +813,8 @@ typeof crypto.randomUUID === "function"
           category: pending?.category || "Fiction",
           subcategory: pending?.subcategory || config.subcategory || "",
           tone: pending?.tone || config.tone || "poetic, emotional, cinematic",
-          language: pending?.language || config.language,
-          characters: charactersFromBibleText(bible),
+          language: toBookLanguage(String(pending?.language || config.language)),
+          characters: charactersFromBibleText(String(bible || "")),
           characterBibleText: String(bible || ""),
         } as BookConfig;
 
@@ -903,7 +914,7 @@ typeof crypto.randomUUID === "function"
       planId: currentPlan,
       success: true,
     });
-    return blueprint;
+    return { blueprint, config: gatedConfig, projectId: previewProject.id };
   };
 
   const handleDelete = async (id: string) => {
@@ -1024,18 +1035,27 @@ typeof crypto.randomUUID === "function"
 
   const heroValid = idea.trim().length >= 6;
 
-  const currentLangLabel = UI_LANGUAGES.find(l => l.value === currentLang)?.label || "English";
-  const completedProjects = projects.filter(isProjectComplete);
-  const draftProjects = projects.filter((p) => !isProjectComplete(p));
-  const activeProjectDoneChapters = dashboardContextProject?.chapters?.filter((chapter) => (chapter.content || "").trim().length > 50).length || 0;
-  const activeProjectTargetChapters = dashboardContextProject?.config?.numberOfChapters || dashboardContextProject?.chapters?.length || 0;
-  const activeProjectProgress = dashboardContextProject
-    ? dashboardContextProject.phase === "complete"
-      ? 100
-      : activeProjectTargetChapters > 0
-        ? Math.min(100, Math.round((activeProjectDoneChapters / activeProjectTargetChapters) * 100))
-        : 0
-    : 0;
+  const currentLangLabel = useMemo(
+    () => UI_LANGUAGES.find((lang) => lang.value === currentLang)?.label || "English",
+    [currentLang],
+  );
+  const completedProjects = useMemo(() => projects.filter(isProjectComplete), [projects]);
+  const draftProjects = useMemo(() => projects.filter((p) => !isProjectComplete(p)), [projects]);
+  const activeProjectStats = useMemo(() => {
+    const targetChapters = dashboardContextProject?.config?.numberOfChapters || dashboardContextProject?.chapters?.length || 0;
+    const doneChapters = dashboardContextProject?.chapters?.filter((chapter) => (chapter.content || "").trim().length > 50).length || 0;
+    const progress = dashboardContextProject
+      ? dashboardContextProject.phase === "complete"
+        ? 100
+        : targetChapters > 0
+          ? Math.min(100, Math.round((doneChapters / targetChapters) * 100))
+          : 0
+      : 0;
+    return { doneChapters, targetChapters, progress };
+  }, [dashboardContextProject]);
+  const activeProjectDoneChapters = activeProjectStats.doneChapters;
+  const activeProjectTargetChapters = activeProjectStats.targetChapters;
+  const activeProjectProgress = activeProjectStats.progress;
 
   const dashboardActionContext = useMemo<DashboardActionContext>(
     () => ({
@@ -1366,26 +1386,6 @@ typeof crypto.randomUUID === "function"
           onStartOneFlow={openOneFlowFromHome}
         />
 
-        {projects.length === 0 && !activeRun && (
-          <section className="mb-6 rounded-2xl border border-sky-300/25 bg-gradient-to-br from-sky-400/10 via-transparent to-violet-400/10 p-6 shadow-[0_16px_40px_rgba(0,0,0,0.12)]">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-300/80">{t("no_projects_yet")}</p>
-                <h2 className="mt-1 text-xl font-bold text-foreground">{t("empty_state_title")}</h2>
-                <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">{t("empty_state_desc")}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => openOneFlowFromHome()}
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-sky-300/40 bg-sky-400/15 px-5 py-3 text-sm font-bold text-white shadow-[0_8px_24px_rgba(0,0,0,0.16)] transition-all hover:bg-sky-400/22"
-              >
-                <Sparkles className="h-4 w-4 text-sky-300" />
-                {t("empty_state_cta")}
-              </button>
-            </div>
-          </section>
-        )}
-
         {!devOn && currentPlan === "free" && (
           <div className="ios-panel mb-4 flex items-center gap-3 p-4">
             <div className="ios-icon ios-icon-pink h-10 w-10 shrink-0 rounded-[16px]">
@@ -1418,7 +1418,7 @@ typeof crypto.randomUUID === "function"
 
       </div>
 
-      {activeDashboardTool && activeDashboardTool !== "book-forge" && (
+      {activeDashboardTool && (
         <Suspense
           fallback={
             <ScriptoraAliveTransition

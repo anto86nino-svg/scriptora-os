@@ -42,7 +42,9 @@ type Props = {
   editable?: boolean;
   reorderable?: boolean;
   onChapterTitleChange?: (index: number, title: string) => void;
+  onChapterSummaryChange?: (index: number, summary: string) => void;
   onSubchapterTitleChange?: (chapterIndex: number, subIndex: number, title: string) => void;
+  onSubchapterSummaryChange?: (chapterIndex: number, subIndex: number, summary: string) => void;
   onReorderChapter?: (index: number, direction: "up" | "down") => void;
   onTitleChange?: (v: string) => void;
   onSubtitleChange?: (v: string) => void;
@@ -82,7 +84,9 @@ export function BlueprintTheater({
   editable = false,
   reorderable = false,
   onChapterTitleChange,
+  onChapterSummaryChange,
   onSubchapterTitleChange,
+  onSubchapterSummaryChange,
   onReorderChapter,
   onTitleChange,
   onSubtitleChange,
@@ -215,7 +219,9 @@ export function BlueprintTheater({
           expandedChapters={expandedChapters}
           onToggleExpand={handleToggleExpand}
           onChapterTitleChange={onChapterTitleChange}
+          onChapterSummaryChange={onChapterSummaryChange}
           onSubchapterTitleChange={onSubchapterTitleChange}
+          onSubchapterSummaryChange={onSubchapterSummaryChange}
           onReorderChapter={onReorderChapter}
           onSelectChapter={handleSelectChapter}
           selectedChapterIndex={selectedChapterIndex}

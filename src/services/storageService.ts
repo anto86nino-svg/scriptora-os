@@ -152,6 +152,27 @@ function withoutTrashed(projects: BookProject[]): BookProject[] {
   return projects.filter((p) => !trashedIds.has(p.id));
 }
 
+function projectTimestamp(project: BookProject): number {
+  const raw = project.updatedAt || project.createdAt || "";
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function mergeProjectsByFreshness(
+  localProjects: BookProject[],
+  cloudProjects: BookProject[],
+): BookProject[] {
+  const merged = new Map<string, BookProject>();
+  for (const project of cloudProjects) merged.set(project.id, project);
+  for (const project of localProjects) {
+    const cloud = merged.get(project.id);
+    if (!cloud || projectTimestamp(project) > projectTimestamp(cloud)) {
+      merged.set(project.id, project);
+    }
+  }
+  return [...merged.values()].sort((a, b) => projectTimestamp(b) - projectTimestamp(a));
+}
+
 export async function loadProjects(
   onRemoteUpdate?: (projects: BookProject[]) => void
 ): Promise<BookProject[]> {
@@ -172,10 +193,16 @@ export async function loadProjects(
       if (error || !data || data.length === 0) return local;
 
       const raw = data.map((row: any) => row.data as BookProject);
-      const projects = withoutTrashed(raw.map(withNormalizedPhase));
+      const cloudProjects = withoutTrashed(raw.map(withNormalizedPhase));
+      const projects = withoutTrashed(mergeProjectsByFreshness(local, cloudProjects));
+      const cloudById = new Map(cloudProjects.map((project) => [project.id, project]));
+      const localNewerThanCloud = projects.filter((project) => {
+        const cloud = cloudById.get(project.id);
+        return !cloud || projectTimestamp(project) > projectTimestamp(cloud);
+      });
 
       // Persist auto-promoted phases (batch, fully async — never block).
-      const toPersist = projects.filter((p, i) => raw[i].phase !== p.phase);
+      const toPersist = cloudProjects.filter((project, index) => raw[index]?.phase !== project.phase);
       if (toPersist.length > 0) {
         Promise.all(
           toPersist.map((p) =>
@@ -194,6 +221,7 @@ export async function loadProjects(
           : setTimeout(cb, 0);
       idle(() => {
         for (const p of projects) saveLocal(tagWithCurrentUser(p));
+        for (const p of localNewerThanCloud) void saveProjectAsync(p);
       });
 
       return projects;

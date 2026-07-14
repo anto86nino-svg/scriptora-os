@@ -51,7 +51,6 @@ const UI_LEAK_PATTERNS: RegExp[] = [
   /^Analysis\s+Pro/i,
   /^Chapter\s+Intelligence/i,
   /^Writer\s+Studio/i,
-  /^Molly\s+Brain/i,
   /^Nessun\s+/i,
   /^Loading\.\.\./i,
   /^\[placeholder\]/i,
@@ -82,7 +81,6 @@ const INLINE_CONTAMINATION_PATTERNS: RegExp[] = [
   /Writer Studio/gi,
   /Voice Studio/gi,
   /Scriptora OS/gi,
-  /Molly Brain/gi,
   /\[da inserire\]/gi,
   /\[placeholder\]/gi,
   /AUTH-[A-Z0-9-]+/g,
@@ -174,7 +172,7 @@ export function splitBookIntoAudioChapters(project: BookProject): AudiobookChapt
 
 export function buildAudiobookManifest(project: BookProject): AudiobookManifest {
   const chapters = splitBookIntoAudioChapters(project);
-  const config = project.config as Record<string, unknown>;
+  const config = project.config;
   const author = resolveExportAuthorName(config) || project.config.authorName || project.config.author || "";
   const identity = project.config.authorIdentity as { penName?: string } | undefined;
   const penName = String(identity?.penName || (project.config as { penName?: string }).penName || author || "");

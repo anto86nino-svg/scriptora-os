@@ -261,6 +261,14 @@ export interface BookIntelligenceKernelSnapshot {
   lockedAt: string;
 }
 
+type PreQualityBookIntelligenceKernel = Omit<
+  BookIntelligenceKernelSnapshot,
+  "readerPsychology" | "bookDNA" | "greatnessScore" | "publishingReadiness"
+> & Partial<Pick<
+  BookIntelligenceKernelSnapshot,
+  "readerPsychology" | "bookDNA" | "greatnessScore" | "publishingReadiness"
+>>;
+
 export interface FormatCoherenceIssue {
   kind: "format" | "structure" | "forbidden_pattern" | "promise";
   severity: "critical" | "high" | "medium";
@@ -819,7 +827,7 @@ export function derivePublishingReadinessFromKernel(greatness: KernelGreatnessRe
 }
 
 export function enrichBookKernelWithQuality(input: {
-  kernel: BookIntelligenceKernelSnapshot;
+  kernel: PreQualityBookIntelligenceKernel;
   config?: Partial<BookConfig> | null;
   text?: string;
 }): BookIntelligenceKernelSnapshot {
@@ -2034,7 +2042,7 @@ export function resolveBookKernel(input: {
     ...template.qualityRules,
     ...template.forbiddenPatterns.map((pattern) => `Vietato: ${pattern}`),
   ];
-  const kernel = {
+  const kernel: PreQualityBookIntelligenceKernel = {
     ...template,
     contentLock: template.contentMode,
     structureLock,
@@ -2051,7 +2059,7 @@ export function resolveBookKernel(input: {
     exportIntelligence: exportIntelligenceFor(format, template),
     registryKey: format,
     lockedAt: new Date().toISOString(),
-  } as BookIntelligenceKernelSnapshot;
+  };
 
   return enrichBookKernelWithQuality({
     kernel,

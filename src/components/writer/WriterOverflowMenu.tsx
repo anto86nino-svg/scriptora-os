@@ -18,6 +18,7 @@ export type WriterOverflowMenuProps = {
   className?: string;
   /** Mobile: one-screen fullscreen instead of popover */
   fullscreen?: boolean;
+  busy?: boolean;
 };
 
 export function WriterOverflowMenu({
@@ -33,6 +34,7 @@ export function WriterOverflowMenu({
   onMarket,
   className,
   fullscreen,
+  busy = false,
 }: WriterOverflowMenuProps) {
   if (!open) return null;
 
@@ -40,7 +42,7 @@ export function WriterOverflowMenu({
     return (
       <MobileFullscreenShell title="Strumenti Writer" subtitle="Voto · Riscrittura · Voice · Export" onClose={onClose}>
         <div className="space-y-2 px-4 py-4">
-          {onEvaluate && <FullscreenMenuItem icon={Target} label="Vota capitolo" onClick={() => { onEvaluate(); onClose(); }} />}
+          {onEvaluate && <FullscreenMenuItem icon={Target} label="Vota capitolo" disabled={busy} onClick={() => { onEvaluate(); onClose(); }} />}
           {onRewrite && (
             <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-2">
               <p className="px-2 pb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-50/65">Riscrivi</p>
@@ -49,6 +51,7 @@ export function WriterOverflowMenu({
                   key={level}
                   icon={Sparkles}
                   label={`Riscrivi ${REWRITE_LEVEL_LABELS[level].label.toLowerCase()}`}
+                  disabled={busy}
                   onClick={() => {
                     onRewrite(level);
                     onClose();
@@ -57,9 +60,9 @@ export function WriterOverflowMenu({
               ))}
             </div>
           )}
-          {onVoice && <FullscreenMenuItem icon={Headphones} label="Ascolta" onClick={() => { onVoice(); onClose(); }} />}
-          {onExport && <FullscreenMenuItem icon={Upload} label="Export" onClick={() => { onExport(); onClose(); }} />}
-          {onCleanup && <FullscreenMenuItem icon={Shield} label="Pulizia editoriale" onClick={() => { onCleanup(); onClose(); }} />}
+          {onVoice && <FullscreenMenuItem icon={Headphones} label="Ascolta" disabled={busy} onClick={() => { onVoice(); onClose(); }} />}
+          {onExport && <FullscreenMenuItem icon={Upload} label="Export" disabled={busy} onClick={() => { onExport(); onClose(); }} />}
+          {onCleanup && <FullscreenMenuItem icon={Shield} label="Pulizia editoriale" disabled={busy} onClick={() => { onCleanup(); onClose(); }} />}
           {onCoach && <FullscreenMenuItem icon={Sparkles} label="AI Coach" onClick={() => { onCoach(); onClose(); }} />}
           {onMarket && <FullscreenMenuItem icon={BarChart3} label="Market OS" onClick={() => { onMarket(); onClose(); }} />}
           {onSettings && <FullscreenMenuItem icon={Settings} label="Impostazioni" onClick={() => { onSettings(); onClose(); }} />}
@@ -77,7 +80,7 @@ export function WriterOverflowMenu({
           className,
         )}
       >
-        {onEvaluate && <MenuItem icon={Target} label="Vota capitolo" onClick={() => { onEvaluate(); onClose(); }} />}
+        {onEvaluate && <MenuItem icon={Target} label="Vota capitolo" disabled={busy} onClick={() => { onEvaluate(); onClose(); }} />}
         {onRewrite && (
           <>
             {(["light", "deep", "bestseller"] as RewriteLevel[]).map((level) => (
@@ -85,6 +88,7 @@ export function WriterOverflowMenu({
                 key={level}
                 icon={Sparkles}
                 label={`Riscrivi ${REWRITE_LEVEL_LABELS[level].label.toLowerCase()}`}
+                disabled={busy}
                 onClick={() => {
                   onRewrite(level);
                   onClose();
@@ -93,9 +97,9 @@ export function WriterOverflowMenu({
             ))}
           </>
         )}
-        {onVoice && <MenuItem icon={Headphones} label="Ascolta" onClick={() => { onVoice(); onClose(); }} />}
-        {onExport && <MenuItem icon={Upload} label="Export" onClick={() => { onExport(); onClose(); }} />}
-        {onCleanup && <MenuItem icon={Shield} label="Pulizia editoriale" onClick={() => { onCleanup(); onClose(); }} />}
+        {onVoice && <MenuItem icon={Headphones} label="Ascolta" disabled={busy} onClick={() => { onVoice(); onClose(); }} />}
+        {onExport && <MenuItem icon={Upload} label="Export" disabled={busy} onClick={() => { onExport(); onClose(); }} />}
+        {onCleanup && <MenuItem icon={Shield} label="Pulizia editoriale" disabled={busy} onClick={() => { onCleanup(); onClose(); }} />}
         {onCoach && <MenuItem icon={Sparkles} label="AI Coach" onClick={() => { onCoach(); onClose(); }} />}
         {onMarket && <MenuItem icon={BarChart3} label="Market OS" onClick={() => { onMarket(); onClose(); }} />}
         {onSettings && <MenuItem icon={Settings} label="Impostazioni" onClick={() => { onSettings(); onClose(); }} />}
@@ -109,16 +113,19 @@ function FullscreenMenuItem({
   icon: Icon,
   label,
   onClick,
+  disabled,
 }: {
   icon: typeof Settings;
   label: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onClick}
-      className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.05] px-4 text-left text-base font-semibold text-white"
+      className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.05] px-4 text-left text-base font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
     >
       <Icon className="h-5 w-5 shrink-0 text-white/55" />
       {label}

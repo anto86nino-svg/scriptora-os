@@ -49,7 +49,7 @@ export interface WritingQualityGateContext {
   language?: string | null;
   genre?: string | null;
   bookFormat?: string | null;
-  config?: Partial<BookConfig> & Record<string, unknown>;
+  config?: Partial<BookConfig>;
 }
 
 interface EventPattern {

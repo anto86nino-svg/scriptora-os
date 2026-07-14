@@ -35,7 +35,31 @@ export type ForgeInterviewSeed = {
   storyRoom?: StoryRoomState;
   antagonistForce?: AntagonistForceType;
   bookPromises?: BookPromises;
+  bookFoundationLocked?: boolean;
 };
+
+export function seedToInterviewState(seed: ForgeInterviewSeed): GuidedInterviewState {
+  return {
+    completed: false,
+    currentStep: 0,
+    confidence: 0,
+    messages: [],
+    extracted: seed.extracted ?? {},
+    selectedGenre: seed.selectedGenre,
+    selectedBookType: seed.selectedBookType,
+    dnaLock: seed.dnaLock,
+    canon: seed.canon,
+    canonLocked: seed.canonLocked,
+    characters: seed.characters,
+    titleIntelligence: seed.titleIntelligence,
+    narrativeDecisions: seed.narrativeDecisions,
+    storyFuture: seed.storyFuture,
+    storyRoom: seed.storyRoom,
+    antagonistForce: seed.antagonistForce,
+    bookPromises: seed.bookPromises,
+    bookFoundationLocked: seed.bookFoundationLocked,
+  };
+}
 
 export type ForgeBlueprintReadiness = {
   ready: boolean;
@@ -46,6 +70,7 @@ const ROLE_LABELS: Record<ForgeCharacter["role"], string> = {
   protagonist: "Protagonista",
   antagonist: "Antagonista",
   supporting: "Personaggio di supporto",
+  love_interest: "Interesse amoroso",
 };
 
 function inferDeepPsychology(character: ForgeCharacter): ForgeCharacter {
@@ -93,11 +118,12 @@ export function buildForgeInterviewSeed(state: GuidedInterviewState): ForgeInter
     storyRoom: state.storyRoom,
     antagonistForce: state.antagonistForce,
     bookPromises: state.bookPromises,
+    bookFoundationLocked: state.bookFoundationLocked,
   };
 }
 
 export function resolveForgeTitle(seed: ForgeInterviewSeed): string {
-  const ti = seed.titleIntelligence ?? deriveTitleIntelligence(seed as GuidedInterviewState);
+  const ti = seed.titleIntelligence ?? deriveTitleIntelligence(seedToInterviewState(seed));
   const ex = seed.extracted ?? {};
   return (
     clean(ti.definitiveTitle) ||
@@ -107,19 +133,19 @@ export function resolveForgeTitle(seed: ForgeInterviewSeed): string {
 }
 
 export function resolveForgeSubtitle(seed: ForgeInterviewSeed): string {
-  const ti = seed.titleIntelligence ?? deriveTitleIntelligence(seed as GuidedInterviewState);
+  const ti = seed.titleIntelligence ?? deriveTitleIntelligence(seedToInterviewState(seed));
   const ex = seed.extracted ?? {};
   return clean(ti.subtitle) || clean(ex.bookSubtitle) || "";
 }
 
 export function resolveForgeCommercialHook(seed: ForgeInterviewSeed): string {
-  const ti = seed.titleIntelligence ?? deriveTitleIntelligence(seed as GuidedInterviewState);
+  const ti = seed.titleIntelligence ?? deriveTitleIntelligence(seedToInterviewState(seed));
   const ex = seed.extracted ?? {};
   return clean(ti.commercialHook) || clean(ex.openingHook) || "";
 }
 
 export function resolveForgeCommercialPromise(seed: ForgeInterviewSeed): string {
-  const ti = seed.titleIntelligence ?? deriveTitleIntelligence(seed as GuidedInterviewState);
+  const ti = seed.titleIntelligence ?? deriveTitleIntelligence(seedToInterviewState(seed));
   const ex = seed.extracted ?? {};
   return clean(ti.commercialPromise) || clean(ex.promise) || "";
 }
@@ -262,7 +288,7 @@ function parseChapterCountValue(value?: string): number {
 export function validateForgeHandoffForBlueprint(seed: ForgeInterviewSeed): ForgeBlueprintReadiness {
   const missing: string[] = [];
   const ex = seed.extracted ?? {};
-  const state = seed as GuidedInterviewState;
+  const state = seedToInterviewState(seed);
   const fiction = (seed.characters?.length ?? 0) > 0;
   const foundationMissing = validateFoundationFieldsFromSeed({
     extracted: ex,
@@ -309,5 +335,5 @@ export function buildForgeGuidedBriefExtras(seed: ForgeInterviewSeed): {
 
 /** Review snapshot for parity checks — Forge vs wizard vs blueprint source. */
 export function buildForgeHandoffReview(seed: ForgeInterviewSeed) {
-  return buildFinalBookReview(seed as GuidedInterviewState);
+  return buildFinalBookReview(seedToInterviewState(seed));
 }

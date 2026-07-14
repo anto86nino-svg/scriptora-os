@@ -1,5 +1,12 @@
 import { resolveAuthorIdentityForPublishing } from "@/lib/author-identity";
 
+type ExportAuthorConfig = {
+  authorName?: unknown;
+  author?: unknown;
+  writerName?: unknown;
+  copyrightName?: unknown;
+};
+
 const PLACEHOLDER_AUTHORS = new Set([
   "",
   "autore",
@@ -14,7 +21,7 @@ export function isPlaceholderExportAuthor(name: string): boolean {
 }
 
 /** Resolves a publishable author name from project config + saved identity. Never invents a fallback. */
-export function resolveExportAuthorName(config: Record<string, unknown> = {}): string | null {
+export function resolveExportAuthorName(config: ExportAuthorConfig = {}): string | null {
   const candidates = [
     config.authorName,
     config.author,

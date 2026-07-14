@@ -3,6 +3,7 @@ import type { FeatureKey } from "@/lib/subscription";
 export type ScriptoraToolId =
   | "book-forge"
   | "writer"
+  | "romanziere"
   | "publishing"
   | "cover"
   | "export"
@@ -42,6 +43,15 @@ export const SCRIPTORA_TOOL_REGISTRY: Record<ScriptoraToolId, ScriptoraToolDefin
     requiresProject: false,
     nextRoute: "/app",
     feature: "create_book_basic",
+    status: "production",
+  },
+  romanziere: {
+    id: "romanziere",
+    label: "Modalità Romanziere",
+    canonicalRoute: "/romanziere",
+    mobileSupport: "full",
+    requiresProject: false,
+    nextRoute: "/app",
     status: "production",
   },
   writer: {

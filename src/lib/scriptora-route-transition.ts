@@ -1,10 +1,10 @@
 export type ScriptoraAliveTone =
   | "dashboard"
   | "writer"
+  | "forge"
   | "kdp"
   | "radar"
   | "cover"
-  | "study"
   | "pricing"
   | "auth"
   | "export"
@@ -89,24 +89,6 @@ export const ROUTE_TRANSITION_COPY: Record<string, RouteTransitionConfig> = {
       "Sto cercando una copertina che parli al lettore giusto…",
     ],
   },
-  "/study": {
-    tone: "study",
-    title: "Sto preparando Study OS…",
-    steps: [
-      "Sto aprendo riassunti, quiz e flashcard…",
-      "Sto preparando il materiale per lo studio guidato…",
-      "Sto trasformando confusione in comprensione…",
-    ],
-  },
-  "/study-session": {
-    tone: "study",
-    title: "Sto preparando la sessione di studio…",
-    steps: [
-      "Sto caricando dispense, appunti e capitoli…",
-      "Sto preparando quiz, flashcard e spiegazioni…",
-      "Sto aprendo il tuo percorso guidato…",
-    ],
-  },
   "/pricing": {
     tone: "pricing",
     title: "Sto sincronizzando piani e crediti…",
@@ -164,11 +146,9 @@ export const ROUTE_TRANSITION_COPY: Record<string, RouteTransitionConfig> = {
 };
 
 const ROUTE_MATCH_ORDER = [
-  "/study-session",
   "/bestseller-radar",
   "/kdp-launch",
   "/keyword-gold",
-  "/study",
   "/writer",
   "/dashboard",
   "/pricing",

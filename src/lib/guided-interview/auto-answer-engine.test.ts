@@ -103,6 +103,46 @@ describe("auto-answer-engine three options", () => {
     expect(second.map((a) => a.text).join("|")).not.toBe(first.map((a) => a.text).join("|"));
   });
 
+  it("answers configuration questions directly instead of inventing an unrelated premise", () => {
+    const state = stateWithGenre("romance");
+    const answers = generateThreeForgeAnswers({
+      state,
+      question: {
+        id: "cfg-chapters",
+        key: "chapterCount",
+        question: "Quanti capitoli deve avere il libro?",
+      },
+      language: "Italian",
+    });
+
+    expect(answers).toHaveLength(3);
+    expect(answers.every((answer) => /capitol/i.test(answer.text))).toBe(true);
+    expect(answers.some((answer) => /slow burn|romance proibito/i.test(answer.text))).toBe(false);
+  });
+
+  it("keeps generated refinements anchored to the author's raw idea", () => {
+    const rawIdea = "Una restauratrice trova messaggi della madre scomparsa sotto la vernice dei quadri.";
+    const state = {
+      ...stateWithGenre("thriller"),
+      extracted: {
+        ...stateWithGenre("thriller").extracted,
+        rawIdea,
+      },
+    };
+    const answers = generateThreeForgeAnswers({
+      state,
+      question: {
+        id: "opening",
+        key: "openingSpark",
+        question: "Qual è il cuore della tua idea?",
+      },
+      language: "Italian",
+    });
+
+    expect(answers).toHaveLength(3);
+    expect(answers.every((answer) => answer.text.includes("restauratrice"))).toBe(true);
+  });
+
   it("falls back to local with 3 answers when AI is unavailable", async () => {
     const state = getInitialInterviewState({ chatFirst: true });
     const result = await generateForgeAutoAnswer({

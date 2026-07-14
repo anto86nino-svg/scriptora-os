@@ -1,23 +1,23 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { isMobileDevice } from "@/lib/mobile-performance";
+import { useDevMode } from "@/lib/dev-mode";
 import GlobalCuriosity from "./GlobalCuriosity";
-import { ScriptoraStepGuide } from "./ScriptoraStepGuide";
 import { DevModeBadge } from "./DevModeBadge";
 import { ScriptoraFloatingDock, FloatingDockSlot } from "./floating/ScriptoraFloatingDock";
 import { ResponsiveAuditPanel } from "./ResponsiveAuditOverlay";
 
 /**
- * Non-critical floating UI (guide, studio, dev badge) — unified dock.
+ * Non-critical floating UI (studio and dev tools) — unified dock.
  * On mobile we mount after idle so the first route paints faster.
  */
 export function MobileAppChrome() {
   const location = useLocation();
+  const devMode = useDevMode();
   const [ready, setReady] = useState(() => !isMobileDevice());
+  const writerStudioVisible = location.pathname === "/app";
 
-  const dockDenseRoute =
-    location.pathname === "/app" ||
-    location.pathname.startsWith("/study");
+  const dockDenseRoute = location.pathname === "/app";
 
   useEffect(() => {
     if (dockDenseRoute) {
@@ -42,13 +42,10 @@ export function MobileAppChrome() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  if (!ready) return null;
+  if (!ready || (!writerStudioVisible && !devMode)) return null;
 
   return (
     <ScriptoraFloatingDock devSlot={import.meta.env.DEV ? <ResponsiveAuditPanel /> : undefined}>
-      <FloatingDockSlot>
-        <ScriptoraStepGuide docked />
-      </FloatingDockSlot>
       <FloatingDockSlot>
         <DevModeBadge docked />
       </FloatingDockSlot>

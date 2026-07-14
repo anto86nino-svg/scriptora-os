@@ -11,7 +11,7 @@
  *   localStorage.setItem('scriptora-verbose', '1')
  */
 
-type LogCategory =
+type CoreLogCategory =
   | "AUTH"
   | "GENERATION"
   | "BLUEPRINT"
@@ -22,6 +22,20 @@ type LogCategory =
   | "KDP"
   | "COACH"
   | "PLAN";
+
+type LogCategory =
+  | CoreLogCategory
+  | Lowercase<CoreLogCategory>
+  | "continuity-gate"
+  | "front-matter"
+  | "back-matter"
+  | "book-structure"
+  | "subchapter"
+  | "regenerate-chapter"
+  | "rewrite-chapter"
+  | "auto-rewrite"
+  | "generate-complete"
+  | "queued-chapter";
 
 const isVerbose = (): boolean => {
   try {

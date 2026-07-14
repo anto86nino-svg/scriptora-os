@@ -215,7 +215,8 @@ export function applyCharacterAnswer(
   key: string,
   answer: string,
 ): ForgeCharacter[] {
-  const fieldMap: Record<string, keyof ForgeCharacter> = {
+  type ForgeCharacterTextField = Exclude<keyof ForgeCharacter, "id" | "role">;
+  const fieldMap: Partial<Record<string, ForgeCharacterTextField>> = {
     characterName: "name",
     characterWound: "wound",
     characterFear: "fear",

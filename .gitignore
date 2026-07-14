@@ -11,10 +11,17 @@ node_modules
 dist
 dist-ssr
 *.local
+*.tsbuildinfo
+
+# Copie locali di sicurezza, non parte del prodotto
+backups/
 
 # Editor directories and files
 .vscode/*
+!.vscode/settings.json
 !.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
 .idea
 .DS_Store
 *.suo
@@ -32,3 +39,6 @@ dist-ssr
 .env.vercel
 .env
 .env.bak.*
+
+# File temporanei creati da Vite durante il caricamento della configurazione
+vite.config.ts.timestamp-*.mjs

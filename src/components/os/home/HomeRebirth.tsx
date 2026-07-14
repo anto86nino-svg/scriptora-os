@@ -1,8 +1,8 @@
 import type { RefObject } from "react";
 import {
+  BookMarked,
   BookOpen,
   Boxes,
-  GraduationCap,
   Image,
   Library,
   LineChart,
@@ -45,6 +45,15 @@ export function HomeRebirth({
   onStartOneFlow,
 }: HomeRebirthProps) {
   const productCards = [
+    {
+      title: "Modalità Romanziere",
+      subtitle:
+        "Entra in uno spazio immersivo dedicato al romanzo, ai capitoli, alla continuità narrativa e alla scrittura profonda.",
+      cta: "Apri Novel Mode",
+      icon: BookMarked,
+      onClick: () => dashboardActionContext.onNavigate(getToolRoute("romanziere")),
+      accent: "from-rose-200/24 to-[#f4ead8]",
+    },
     {
       title: "Continua a scrivere",
       subtitle: lastProject?.config?.title?.trim()
@@ -102,14 +111,6 @@ export function HomeRebirth({
       icon: Image,
       onClick: dashboardActionContext.onOpenCover,
       accent: "from-yellow-200/20 to-[#f4ead8]",
-    },
-    {
-      title: "Scriptora Study OS",
-      subtitle: "Riassunti, quiz, flashcard, interrogazioni e attestati",
-      cta: "Apri Study OS",
-      icon: GraduationCap,
-      onClick: () => dashboardActionContext.onNavigate(getToolRoute("study")),
-      accent: "from-amber-100/28 to-[#efe2cc]",
     },
   ];
 

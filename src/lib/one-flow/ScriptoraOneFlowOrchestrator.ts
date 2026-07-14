@@ -376,7 +376,6 @@ export function applyProposalEditIntent(session: OneFlowSession, editText: strin
         genre,
         language: session.language,
         idea,
-        tone: proposal.tone,
         titleSeed: proposal.title,
       });
       if (regen) {

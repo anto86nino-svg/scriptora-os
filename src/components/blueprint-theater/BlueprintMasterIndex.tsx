@@ -22,7 +22,9 @@ type Props = {
   expandedChapters: Record<number, boolean>;
   onToggleExpand: (index: number) => void;
   onChapterTitleChange?: (index: number, title: string) => void;
+  onChapterSummaryChange?: (index: number, summary: string) => void;
   onSubchapterTitleChange?: (chapterIndex: number, subIndex: number, title: string) => void;
+  onSubchapterSummaryChange?: (chapterIndex: number, subIndex: number, summary: string) => void;
   onReorderChapter?: (index: number, direction: "up" | "down") => void;
   onSelectChapter?: (index: number) => void;
   selectedChapterIndex?: number | null;
@@ -46,7 +48,9 @@ export function BlueprintMasterIndex({
   expandedChapters,
   onToggleExpand,
   onChapterTitleChange,
+  onChapterSummaryChange,
   onSubchapterTitleChange,
+  onSubchapterSummaryChange,
   onReorderChapter,
   onSelectChapter,
   selectedChapterIndex = null,
@@ -120,6 +124,7 @@ export function BlueprintMasterIndex({
                         {editable && onChapterTitleChange ? (
                           <input
                             value={chapter.title}
+                            aria-label={`${italianUi ? "Titolo capitolo" : "Chapter title"} ${index + 1}`}
                             onChange={(e) => onChapterTitleChange(index, e.target.value)}
                             className="mt-0.5 w-full rounded-lg border border-transparent bg-transparent text-base font-semibold text-white focus:border-white/20 focus:bg-white/5 focus:outline-none"
                           />
@@ -145,9 +150,17 @@ export function BlueprintMasterIndex({
                           </button>
                       )}
                     </div>
-                    {chapter.summary && (
+                    {editable && onChapterSummaryChange ? (
+                      <textarea
+                        value={chapter.summary || ""}
+                        aria-label={`${italianUi ? "Riassunto capitolo" : "Chapter summary"} ${index + 1}`}
+                        onChange={(event) => onChapterSummaryChange(index, event.target.value)}
+                        rows={3}
+                        className="mt-2 w-full resize-y rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[11px] leading-relaxed text-white/60 focus:border-violet-300/30 focus:outline-none"
+                      />
+                    ) : chapter.summary ? (
                       <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-white/45">{chapter.summary}</p>
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
@@ -158,12 +171,28 @@ export function BlueprintMasterIndex({
                         <span className="text-[9px] uppercase tracking-wider text-white/35">
                           {italianUi ? "Sottocapitolo" : "Subchapter"} {subIndex + 1}
                         </span>
-                        {editable && onSubchapterTitleChange ? (
-                          <input
-                            value={sub.title}
-                            onChange={(e) => onSubchapterTitleChange(index, subIndex, e.target.value)}
-                            className="mt-0.5 w-full bg-transparent text-sm text-white/85 focus:outline-none"
-                          />
+                        {editable && (onSubchapterTitleChange || onSubchapterSummaryChange) ? (
+                          <>
+                            {onSubchapterTitleChange ? (
+                              <input
+                                value={sub.title}
+                                aria-label={`${italianUi ? "Titolo sottocapitolo" : "Subchapter title"} ${index + 1}.${subIndex + 1}`}
+                                onChange={(e) => onSubchapterTitleChange(index, subIndex, e.target.value)}
+                                className="mt-0.5 w-full bg-transparent text-sm text-white/85 focus:outline-none"
+                              />
+                            ) : (
+                              <p className="mt-0.5 text-sm text-white/75">{sub.title}</p>
+                            )}
+                            {onSubchapterSummaryChange && (
+                              <textarea
+                                value={sub.summary || ""}
+                                aria-label={`${italianUi ? "Riassunto sottocapitolo" : "Subchapter summary"} ${index + 1}.${subIndex + 1}`}
+                                onChange={(event) => onSubchapterSummaryChange(index, subIndex, event.target.value)}
+                                rows={2}
+                                className="mt-1 w-full resize-y rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] leading-relaxed text-white/55 focus:border-violet-300/30 focus:outline-none"
+                              />
+                            )}
+                          </>
                         ) : (
                           <p className="mt-0.5 text-sm text-white/75">{sub.title}</p>
                         )}

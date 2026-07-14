@@ -72,6 +72,10 @@ describe("slot deduction engine", () => {
     const memory = getForgeMemory(state);
     expect(memory.slotValues.authorName).toBe("Livia");
     expect(isSlotFilled(memory, "authorName")).toBe(true);
+    expect(state.extracted.authorName).toBe("Livia");
+    expect(String(state.extracted.centralConflict ?? "")).not.toMatch(/confermo/i);
+    expect(String(state.extracted.emotionalTone ?? "")).not.toMatch(/confermo/i);
+    expect(String(state.extracted.setting ?? "")).not.toMatch(/confermo/i);
   });
 });
 

@@ -396,6 +396,8 @@ describe("Book Intelligence Kernel", () => {
     const registered = registerBookKernelTemplate("field guide", {
       ...base,
       bookFormat: "field_guide",
+      defaultGenre: base.genre,
+      defaultTone: base.tone,
       contentMode: "reference",
       structureModel: "travel_sections",
       generationStrategy: "generateTravelGuide",

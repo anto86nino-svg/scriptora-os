@@ -65,8 +65,11 @@ export interface ExtractedBookIntent {
   marketplace?: string;
   authorName?: string;
   bookType?: string;
+  bookFormat?: string;
   genre?: string;
+  category?: string;
   subgenre?: string;
+  tone?: string;
   bookLength?: string;
   chapterCount?: string;
   chapterLength?: string;
@@ -75,12 +78,14 @@ export interface ExtractedBookIntent {
   structurePreference?: string;
   commercialGoal?: string;
   openingHook?: string;
+  stakes?: string;
   /** Studio Express — sinossi editoriale completa (spoiler) */
   editorialSynopsis?: string;
 
   /** Title & matter */
   bookTitle?: string;
   bookSubtitle?: string;
+  rawIdea?: string;
   frontMatter?: string;
   backMatter?: string;
 
@@ -94,9 +99,15 @@ export interface ExtractedBookIntent {
   characterSecret?: string;
   characterArc?: string;
   antagonistForce?: string;
+  antagonist?: string;
+  antagonistWound?: string;
 
   /** Narrative decisions */
   narrativeDecision?: string;
+  endingDirection?: string;
+  narrativeArc?: string;
+  indexOutline?: string;
+  method?: string;
 
   /** Copyright */
   copyrightMode?: string;

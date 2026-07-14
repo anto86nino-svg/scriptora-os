@@ -68,28 +68,9 @@ export default defineConfig(({ mode }) => ({
             return "vendor-misc";
           }
 
-          if (id.includes("/src/lib/generation.ts")) {
-            return "engine-generation";
-          }
-          if (
-            id.includes("/src/components/guided-interview/") ||
-            id.includes("/src/lib/guided-interview/")
-          ) {
-            return "forge-guided-interview";
-          }
-          if (id.includes("/src/mobile/MobileBookForge")) {
-            return "ui-mobile-book-forge";
-          }
-          if (id.includes("/src/lib/epub.ts")) return "export-epub";
-          if (id.includes("/src/lib/docx-export")) return "export-docx";
-          if (id.includes("/src/lib/pdf-export")) return "export-pdf";
-          if (id.includes("/src/lib/study-session")) return "study-session";
-          if (id.includes("/src/lib/study-certificate")) return "study-certificate";
-          if (id.includes("/src/components/EditorPanel")) return "ui-editor-panel";
-          if (id.includes("/src/pages/StudySessionPage")) return "page-study-session";
-          if (id.includes("/src/pages/Dashboard")) return "page-dashboard";
-          if (id.includes("/src/pages/Index")) return "page-writer";
-          if (id.includes("/src/pages/AutoBestsellerPage")) return "page-auto-bestseller";
+          // Application modules are intentionally left to Rollup's automatic
+          // graph splitting. Forcing /src chunks pulled Writer, Forge and the
+          // generation engine into the initial WKWebView boot graph.
         },
       },
     },

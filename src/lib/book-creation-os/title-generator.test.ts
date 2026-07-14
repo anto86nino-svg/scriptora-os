@@ -7,7 +7,7 @@ describe("generateWizardTitleProposals", () => {
     const proposals = generateWizardTitleProposals(
       "",
       "Manuale pratico per coltivare pomodori in vaso con checklist, errori comuni e calendario settimanale",
-      "it",
+      "Italian",
       "test",
       {
         level1BookType: "manuale",
@@ -31,7 +31,7 @@ describe("generateWizardTitleProposals", () => {
     const proposals = generateWizardTitleProposals(
       "",
       "Manuale dark ma pratico per capire le emozioni nascoste e trasformarle in esercizi quotidiani",
-      "it",
+      "Italian",
       "test",
       {
         level1BookType: "manuale",

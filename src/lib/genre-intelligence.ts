@@ -72,7 +72,7 @@ export interface GenreBlueprint {
   contentRules: string[];
 }
 
-const PROFILES: Record<GenreKey, GenreProfile> = {
+const PROFILES: Partial<Record<GenreKey, GenreProfile>> = {
   /* ============== FICTION ============== */
 
   horror: {
@@ -1120,7 +1120,7 @@ export function resolveGenreKey(genre: string, subcategory?: string, bookFormat?
 
 export function getGenreProfile(genre: string, subcategory?: string, bookFormat?: string): GenreProfile {
   const key = resolveGenreKey(genre, subcategory, bookFormat);
-  return PROFILES[key];
+  return PROFILES[key] || PROFILES["self-help"]!;
 }
 
 /**
@@ -1197,7 +1197,7 @@ export function getGenreBlueprint(genre: string, subcategory?: string, bookForma
   const key = resolveGenreKey(genre, subcategory, bookFormat);
   const explicit = BLUEPRINTS[key];
   if (explicit) return explicit;
-  return buildFallbackBlueprint(key, PROFILES[key]);
+  return buildFallbackBlueprint(key, getGenreProfile(genre, subcategory, bookFormat));
 }
 
 /**
@@ -1257,4 +1257,3 @@ ${bp.contentRules.map(r => `• ${r}`).join("\n")}
 
 ${opts.previousChaptersContext ? `CONTEXT FROM PREVIOUS CHAPTERS:\n${opts.previousChaptersContext}` : ""}`.trim();
 }
-

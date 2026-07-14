@@ -22,10 +22,14 @@ export interface ReaderAddictionResult {
   strengths: string[];
 }
 
+function countPatternMatches(text: string, patterns: readonly RegExp[]): number {
+  return patterns.reduce((total, pattern) => total + (text.match(pattern)?.length || 0), 0);
+}
+
 export function scoreReaderAddiction(text: string, fiction: boolean): ReaderAddictionResult {
   const words = text.split(/\s+/).filter(Boolean).length || 1;
-  const dragHits = (text.match(DRAG_PATTERNS) || []).length;
-  const momentumHits = (text.match(MOMENTUM_PATTERNS) || []).length;
+  const dragHits = countPatternMatches(text, DRAG_PATTERNS);
+  const momentumHits = countPatternMatches(text, MOMENTUM_PATTERNS);
   const hook = scoreHookPower(text, fiction);
   const ending = scoreChapterEndingMagnetism(text);
 

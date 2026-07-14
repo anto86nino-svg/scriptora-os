@@ -1,5 +1,6 @@
 import {
   extractConceptProtagonist,
+  extractTimeAnchor,
   extractSubmergedCityLabel,
   extractSubmergedCityRole,
   hasBusinessRestaurantSignals,

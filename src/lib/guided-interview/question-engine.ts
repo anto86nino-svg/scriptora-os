@@ -69,7 +69,11 @@ import {
   isGenreSlotLocked,
   getGenreSelectionQuestion,
 } from "./forge-genre-catalog";
-import { seedAuthorIdentityConfirmation } from "./slot-deduction-engine";
+import {
+  isSlotConfirmationQuestion,
+  resolveSlotConfirmationAnswer,
+  seedAuthorIdentityConfirmation,
+} from "./slot-deduction-engine";
 
 export type InitialInterviewOptions = Partial<GuidedInterviewState> & {
   hostContext?: ForgeHostContext;
@@ -445,6 +449,34 @@ const QUESTIONS_BY_GENRE: Record<InterviewGenre, InterviewQuestion[]> = {
       key: "emotionalTone",
       question: "Che tipo di paura vuoi lasciare nel lettore quando chiude il libro?",
       helper: "Psicologica, investigativa, paranoica, claustrofobica, disturbante.",
+      quickSuggestions: THRILLER_HORROR_TONE_SUGGESTIONS,
+      placeholder: GENERIC_PLACEHOLDER,
+    },
+  ],
+  horror: [
+    {
+      id: "horror-protagonist",
+      key: "centralConflict",
+      question: "Chi entra per primo in contatto con l'orrore — e cosa rischia di perdere?",
+      placeholder: GENERIC_PLACEHOLDER,
+    },
+    {
+      id: "horror-threat",
+      key: "centralConflict",
+      question: "Quale minaccia, presenza o verità rende impossibile tornare alla normalità?",
+      placeholder: GENERIC_PLACEHOLDER,
+    },
+    {
+      id: "horror-setting",
+      key: "setting",
+      question: "Quale luogo o atmosfera amplifica la paura e intrappola il protagonista?",
+      placeholder: GENERIC_PLACEHOLDER,
+    },
+    {
+      id: "horror-fear",
+      key: "emotionalTone",
+      question: "Che tipo di paura vuoi lasciare nel lettore quando chiude il libro?",
+      helper: "Psicologica, soprannaturale, corporea, cosmica, claustrofobica o ambigua.",
       quickSuggestions: THRILLER_HORROR_TONE_SUGGESTIONS,
       placeholder: GENERIC_PLACEHOLDER,
     },
@@ -857,24 +889,38 @@ export function applyInterviewAnswer(
   if (!currentQuestion) return state;
 
   const extractedKey = resolveExtractedFieldKey(mapForgeAnswerToProConfigKey(currentQuestion.key));
-  let extracted = {
-    ...state.extracted,
-    [extractedKey]: normalized,
-    [currentQuestion.key]: normalized,
-  };
+  const confirmation = isSlotConfirmationQuestion(currentQuestion.id)
+    ? resolveSlotConfirmationAnswer(currentQuestion, normalized, getForgeMemory(state))
+    : null;
+  const isConfirmation = Boolean(confirmation);
+  let extracted = { ...state.extracted };
+  let selectedGenre = state.selectedGenre;
+  let selectedBookType = state.selectedBookType;
+  let inferredProfile = state.inferredProfile;
 
-  const userBlob = collectUserBlob(state, normalized);
-  const inference = inferBookProfileFromText(userBlob, extracted);
-  extracted = mergeInferenceIntoExtracted(extracted, inference, normalized);
-
-  const selectedGenre =
-    state.selectedGenre ||
-    inference.genre ||
-    undefined;
-  const selectedBookType =
-    state.selectedBookType ||
-    inference.bookType ||
-    undefined;
+  if (confirmation?.value) {
+    extracted = {
+      ...extracted,
+      [extractedKey]: confirmation.value,
+      [currentQuestion.key]: confirmation.value,
+    };
+  } else if (!isConfirmation) {
+    extracted = {
+      ...extracted,
+      [extractedKey]: normalized,
+      [currentQuestion.key]: normalized,
+    };
+    const userBlob = collectUserBlob(state, normalized);
+    const inference = inferBookProfileFromText(userBlob, extracted);
+    extracted = mergeInferenceIntoExtracted(extracted, inference, normalized);
+    selectedGenre = state.selectedGenre || inference.genre || undefined;
+    selectedBookType = state.selectedBookType || inference.bookType || undefined;
+    inferredProfile = {
+      ...state.inferredProfile,
+      ...inference,
+      confidence: Math.max(state.inferredProfile?.confidence ?? 0, inference.confidence),
+    };
+  }
 
   const nextState: GuidedInterviewState = {
     ...state,
@@ -883,11 +929,7 @@ export function applyInterviewAnswer(
     extracted,
     selectedGenre,
     selectedBookType,
-    inferredProfile: {
-      ...state.inferredProfile,
-      ...inference,
-      confidence: Math.max(state.inferredProfile?.confidence ?? 0, inference.confidence),
-    },
+    inferredProfile,
     messages: [
       ...state.messages,
       {
@@ -901,7 +943,9 @@ export function applyInterviewAnswer(
 
   nextState.confidence = calculateInterviewConfidence(nextState);
 
-  const enriched = enrichStateAfterAnswer(nextState, currentQuestion, normalized);
+  const enriched = isConfirmation
+    ? nextState
+    : enrichStateAfterAnswer(nextState, currentQuestion, normalized);
 
   const { memory, diff } = updateForgeMemoryFromAnswer(enriched, normalized, currentQuestion);
   enriched.forgeMemory = memoryRecapShown(memory, countForgeUserAnswers(enriched));

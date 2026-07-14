@@ -19,7 +19,11 @@ import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/bi
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { computePremiumEditorialScores } from "@/lib/editorial-intelligence-premium";
 import { isMemoryConsistencyV25Enabled, runDevelopmentalMemoryCheck } from "@/lib/memory-consistency-v25";
-import { evaluateGreatnessChapter, isGreatnessDiagnosticsEnabled, getGreatnessMode } from "@/lib/greatness-engine";
+import { evaluateGreatnessChapter } from "@/lib/greatness-engine/evaluator";
+import {
+  getGreatnessMode,
+  isGreatnessDiagnosticsEnabled,
+} from "@/lib/narrative-baseline-lock/greatness-mode";
 import {
   listChapterRevisions,
   peekChapterRevision,
@@ -35,8 +39,8 @@ function countWordsForChapterLock(value: unknown): number {
     const trimmed = value.trim();
     return trimmed ? trimmed.split(/\s+/).length : 0;
   }
-  if (Array.isArray(value)) return value.reduce((sum, item) => sum + countWordsForChapterLock(item), 0);
-  if (typeof value === "object") return Object.values(value as Record<string, unknown>).reduce((sum, item) => sum + countWordsForChapterLock(item), 0);
+  if (Array.isArray(value)) return value.reduce<number>((sum, item) => sum + countWordsForChapterLock(item), 0);
+  if (typeof value === "object") return Object.values(value as Record<string, unknown>).reduce<number>((sum, item) => sum + countWordsForChapterLock(item), 0);
   return 0;
 }
 

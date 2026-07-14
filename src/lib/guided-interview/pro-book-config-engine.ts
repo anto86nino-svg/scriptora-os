@@ -144,6 +144,7 @@ const NATURAL_CONFIG_QUESTIONS: InterviewQuestion[] = [
     "cfg-back-matter",
     "backMatter",
     "E dopo l'ultima pagina — ringraziamenti, note, appendice, invito al prossimo libro?",
+    undefined,
     [
       { label: "Ringraziamenti", value: "Ringraziamenti" },
       { label: "Note e appendice", value: "Note e appendice" },

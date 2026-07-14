@@ -22,10 +22,10 @@ export type ScriptoraAliveTransitionProps = {
 const TONE_ACCENT: Record<ScriptoraAliveTone, string> = {
   dashboard: "from-cyan-400/80 via-violet-400/70 to-fuchsia-400/80",
   writer: "from-cyan-300/80 via-sky-400/70 to-blue-400/80",
+  forge: "from-amber-300/80 via-orange-400/70 to-rose-400/80",
   kdp: "from-violet-400/80 via-fuchsia-400/70 to-pink-400/80",
   radar: "from-amber-300/80 via-orange-400/70 to-rose-400/80",
   cover: "from-amber-300/80 via-yellow-400/70 to-orange-400/80",
-  study: "from-emerald-300/80 via-teal-400/70 to-cyan-400/80",
   pricing: "from-sky-300/80 via-indigo-400/70 to-violet-400/80",
   auth: "from-slate-300/80 via-cyan-400/70 to-violet-400/80",
   export: "from-primary/80 via-cyan-400/70 to-violet-400/80",

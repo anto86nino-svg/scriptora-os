@@ -79,8 +79,11 @@ export function normalizeProjectChapters(project: BookProject): BookProject {
       ? {
           title: outline.title,
           summary: outline.summary,
-          subchapters: Array.isArray((outline as { subchapters?: SubChapter[] }).subchapters)
-            ? (outline as { subchapters?: SubChapter[] }).subchapters
+          subchapters: Array.isArray(outline.subchapters)
+            ? outline.subchapters.map((subchapter) => ({
+                title: String(subchapter?.title || ""),
+                content: "",
+              }))
             : [],
         }
       : undefined;

@@ -109,6 +109,7 @@ export type ForgeSlotKey =
   | "outcome"
   | "narrativeArc"
   | "indexOutline"
+  | "structure"
   | "antiDriftRules";
 
 export type ForgeSlotValues = Partial<Record<ForgeSlotKey, string | number | boolean | string[]>>;
@@ -142,6 +143,7 @@ export type ForgeQuestionDef = {
   slotTarget: ForgeSlotKey;
   stage: ForgeMemoryStage;
   intent: string;
+  helper?: string;
   key: string;
   text: string | ((memory: ForgeInterviewMemory) => string);
   quickChoices?:
@@ -704,6 +706,15 @@ export function updateForgeMemoryFromAnswer(
       applySlot(memory, confirmation.slot, confirmation.value, diff);
       memory = clearPendingSlotConfirmation(memory, confirmation.slot);
     }
+
+    const previousStage = memory.currentStage;
+    memory = advanceStoryRoomStage(memory, { lastAnswer: confirmation.value ?? userAnswer });
+    memory.currentStage = resolveMemoryStage(memory);
+    if (previousStage !== memory.currentStage && !memory.completedStages.includes(previousStage)) {
+      memory.completedStages.push(previousStage);
+    }
+    diff.stillMissingSlots = getCriticalMissingSlots(memory);
+    return { memory, diff };
   }
 
   const parsedLanguage = parseLanguage(userAnswer);

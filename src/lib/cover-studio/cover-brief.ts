@@ -1,9 +1,14 @@
 import type { CoverBrief, CoverBriefInput } from "./cover-types";
 import { inferGenreFamily } from "./cover-templates";
 
+type CoverBriefCopy = Omit<
+  CoverBrief,
+  "title" | "author" | "subtitle" | "genre" | "language" | "marketplace" | "genreFamily"
+>;
+
 const BRIEF_COPY: Record<
   ReturnType<typeof inferGenreFamily>,
-  { it: Omit<CoverBrief, "title" | "author" | "subtitle" | "genre" | "language" | "marketplace" | "genreFamily">; en: typeof BRIEF_COPY["general"]["en"] }
+  { it: CoverBriefCopy; en: CoverBriefCopy }
 > = {
   "dark-romance": {
     it: {

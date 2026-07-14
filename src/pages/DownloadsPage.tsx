@@ -16,7 +16,7 @@ export default function DownloadsPage() {
             to="/dashboard"
             className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Back
+            <ArrowLeft className="h-3.5 w-3.5" /> Dashboard
           </Link>
           <span className="text-xs font-bold tracking-wider uppercase text-muted-foreground">
             Scriptora · Download Center
@@ -28,7 +28,7 @@ export default function DownloadsPage() {
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-primary/30 bg-primary/10 text-[10px] font-bold uppercase tracking-wider text-primary mb-4">
             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            Release infrastructure ready
+            Infrastruttura di rilascio pronta
           </div>
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight">
             Installa Scriptora sui tuoi dispositivi
@@ -53,8 +53,8 @@ export default function DownloadsPage() {
             <div className="space-y-1">
               <h3 className="text-sm font-bold text-foreground">Nota tecnica</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                I file installabili (APK, AAB, DMG, ZIP, EXE) richiedono una pipeline di build
-                Capacitor per Android, Electron o Tauri per desktop, oppure GitHub Actions per
+                I progetti e file installabili (iOS/Xcode, APK, AAB, DMG, ZIP, EXE) richiedono una pipeline di build
+                Capacitor per iOS e Android, Electron o Tauri per desktop, oppure GitHub Actions per
                 generare gli artifact in modo automatico ad ogni release. Quando i link saranno
                 inseriti in <code className="px-1 py-0.5 rounded bg-muted text-foreground">.env</code>,
                 i bottoni si attiveranno automaticamente senza modifiche al codice.

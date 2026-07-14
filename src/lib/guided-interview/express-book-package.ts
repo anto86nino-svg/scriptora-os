@@ -91,6 +91,7 @@ import { buildCanonFromState, lockCanonMaster } from "./canon-genesis-engine";
 import { buildDnaLockFromInterviewState } from "./dna-lock";
 import { finalizeForgeForBlueprint } from "./forge-evolution-engine";
 import { buildForgeInterviewSeed,
+  seedToInterviewState,
   validateForgeHandoffForBlueprint,
 } from "./forge-blueprint-handoff";
 import { applyBlueprintReadySummaryToState } from "./blueprint-ready-summary";
@@ -134,6 +135,7 @@ export type CompleteExpressBookPackage = {
   editorialSynopsis: string;
   genre: string;
   subgenre: string;
+  tone?: string;
   language: string;
   targetAudience: string;
   marketPromise: string;
@@ -3406,13 +3408,7 @@ export function validateExpressPackageReadiness(state: GuidedInterviewState): {
 export function repairForgeHandoffSeedForBlueprint(
   seed: ReturnType<typeof buildForgeInterviewSeed>,
 ): ReturnType<typeof buildForgeInterviewSeed> {
-  let state = {
-    messages: [],
-    ...(seed as GuidedInterviewState),
-  } as GuidedInterviewState;
-  if (!Array.isArray(state.messages)) {
-    state = { ...state, messages: [] };
-  }
+  let state = seedToInterviewState(seed);
   state = ensureExpressBookPackageCompleteness(state);
   state = applyBlueprintReadySummaryToState(state);
   state = finalizeForgeForBlueprint(state);

@@ -36,9 +36,6 @@ export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarP
         >
           <CreditCard className="h-3 w-3 shrink-0 text-sky-300" />
           <span className="truncate tabular-nums">Crediti: {formatCredits(wallet.balance)}</span>
-          {needsTopUp && lowCreditHint && (
-            <span className="hidden min-[380px]:inline text-amber-300/90">· Ricarica</span>
-          )}
         </button>
         {canDevSimulateCreditPurchase() ? (
           <DevCreditQuickBuy variant="pill" />

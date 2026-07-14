@@ -196,6 +196,9 @@ export type WizardAutofillPatch = {
   commercialGoal?: string;
   chapters?: number;
   idea?: string;
+  coreConflict?: string;
+  setting?: string;
+  openingHook?: string;
 };
 
 export function buildWizardAutofillPatch(

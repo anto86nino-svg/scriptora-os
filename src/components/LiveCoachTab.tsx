@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { BookProject, SectionId } from "@/types/book";
-import { Sparkles, Send, Loader2, MessageCircle, Heart } from "lucide-react";
+import { Sparkles, Send, Loader2, MessageCircle, Heart, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { MollySprite } from "@/components/molly/MollySprite";
 import { getCurrentUserId } from "@/services/storageService";
 
 interface LiveCoachTabProps {
@@ -218,9 +217,11 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
     <div className="flex flex-col h-full">
       <div className="shrink-0 border-b border-border/40 px-3 py-2">
         <div className="flex items-center gap-2.5">
-          <MollySprite visual="idle" mood="calm" size={36} />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Bot className="h-5 w-5" aria-hidden="true" />
+          </div>
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-foreground">Molly Coach</p>
+            <p className="text-xs font-semibold text-foreground">Coach AI</p>
             <p className="text-[10px] text-muted-foreground">Feedback su richiesta — niente ascolto automatico</p>
           </div>
         </div>
@@ -239,7 +240,7 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
             onClick={fireSpontaneous}
             disabled={thinking || chatLoading}
             className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-accent/20 text-accent-foreground hover:bg-accent/30 disabled:opacity-40 transition-colors"
-            title="Chiedi uno spunto a Molly"
+            title="Chiedi uno spunto al coach"
           >
             Spunto
           </button>
@@ -257,13 +258,13 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
         {!active ? (
           <div className="text-center py-8 space-y-2">
             <Heart className="h-6 w-6 text-muted-foreground/30 mx-auto" />
-            <p className="text-xs text-muted-foreground/60">Apri un capitolo e richiama Molly quando ti serve.</p>
+            <p className="text-xs text-muted-foreground/60">Apri un capitolo e richiama il coach quando ti serve.</p>
           </div>
         ) : bubbles.length === 0 && !thinking ? (
           <div className="text-center py-8 space-y-2">
             <Sparkles className="h-6 w-6 text-primary/40 mx-auto" />
             <p className="text-xs text-muted-foreground/70">
-              Ciao, sono Molly. Scrivimi una domanda oppure attiva l'ascolto quando vuoi un feedback live.
+              Scrivi una domanda oppure attiva l'ascolto quando vuoi un feedback live.
             </p>
             <p className="text-[10px] text-muted-foreground/50">Resto in silenzio finche non mi richiami.</p>
           </div>
@@ -300,7 +301,7 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
                 sendChat();
               }
             }}
-            placeholder="Chiedi a Molly..."
+            placeholder="Chiedi al coach..."
             rows={1}
             className="flex-1 resize-none rounded-lg border border-border/40 bg-background/60 px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 max-h-24"
           />
@@ -347,4 +348,3 @@ function BubbleRow({ bubble }: { bubble: Bubble }) {
     </div>
   );
 }
-

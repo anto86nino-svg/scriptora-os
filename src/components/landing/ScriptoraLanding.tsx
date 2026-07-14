@@ -1,5 +1,4 @@
-import { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -28,10 +27,8 @@ import { PublicDualPath } from "@/components/landing/PublicDualPath";
 import { PublicTestimonials } from "@/components/landing/PublicTestimonials";
 import {
   AUTHOR_SUBSCRIPTION_PLANS,
-  STUDENT_SUBSCRIPTION_PLANS,
   type SubscriptionPlanDefinition,
 } from "@/lib/billing/pricingCatalog";
-import { STUDY_USAGE_LIMITS } from "@/lib/study-os/study-limits";
 import { PAY_PER_PROJECT_TIERS } from "@/lib/pay-per-project";
 
 interface ScriptoraLandingProps {
@@ -94,9 +91,9 @@ const landingCopy: Record<UILanguage, {
     navPricing: "Plans",
     enter: "Enter",
     languageLabel: "Interface language",
-    kicker: "Author Studio + Study OS",
-    heroTitle: "Write books. Study smarter. One OS.",
-    heroText: "Scriptora is not another writing chat. It is a full editorial studio for authors and a guided study engine for students of every field.",
+    kicker: "Editorial OS for authors",
+    heroTitle: "Write coherent books. One OS.",
+    heroText: "Scriptora is not another writing chat. It is a complete editorial studio that takes authors from the first idea to publication-ready files.",
     primary: "Start free",
     secondary: "See the flow",
     proofSigned: "Your workspace is waiting",
@@ -130,7 +127,7 @@ const landingCopy: Record<UILanguage, {
     testimonialsTitle: "Built for writers who refuse to lose the thread.",
     testimonialsText: "Short field notes from authors who use Scriptora as a creative cockpit: voice, structure and publishing preparation in one place.",
     finalTitle: "Open your editorial studio.",
-    finalText: "Write your book or ace your exams — same account, same premium platform.",
+    finalText: "Plan, write, revise and prepare your book for publication in one premium platform.",
   },
   it: {
     navHow: "Come funziona",
@@ -138,9 +135,9 @@ const landingCopy: Record<UILanguage, {
     navPricing: "Piani",
     enter: "Entra",
     languageLabel: "Lingua interfaccia",
-    kicker: "Author Studio + Study OS",
-    heroTitle: "Scrivi libri. Studia meglio. Un solo OS.",
-    heroText: "Scriptora non è un'altra chat di scrittura. È uno studio editoriale completo per autori e un motore di studio guidato per studenti di ogni indirizzo.",
+    kicker: "Sistema editoriale per autori",
+    heroTitle: "Scrivi libri coerenti. Un solo OS.",
+    heroText: "Scriptora non è un'altra chat di scrittura. È uno studio editoriale completo che accompagna l'autore dalla prima idea ai file pronti per la pubblicazione.",
     primary: "Inizia gratis",
     secondary: "Guarda il flusso",
     proofSigned: "Il tuo workspace ti aspetta",
@@ -174,7 +171,7 @@ const landingCopy: Record<UILanguage, {
     testimonialsTitle: "Creato per autori che non vogliono perdere il filo.",
     testimonialsText: "Appunti brevi da chi usa Scriptora come cabina creativa: voce, struttura e preparazione editoriale nello stesso luogo.",
     finalTitle: "Apri il tuo studio editoriale.",
-    finalText: "Scrivi il libro o prepara l'esame — stesso account, stessa piattaforma premium.",
+    finalText: "Progetta, scrivi, revisiona e prepara il libro per la pubblicazione in un'unica piattaforma premium.",
   },
   es: {
     navHow: "Como funciona",
@@ -182,9 +179,9 @@ const landingCopy: Record<UILanguage, {
     navPricing: "Planes",
     enter: "Entrar",
     languageLabel: "Idioma de interfaz",
-    kicker: "Author Studio + Study OS",
-    heroTitle: "Escribe libros. Estudia mejor. Un solo OS.",
-    heroText: "Scriptora no es otro chat de escritura. Es un estudio editorial completo para autores y un motor de estudio guiado para estudiantes de cualquier area.",
+    kicker: "Sistema editorial para autores",
+    heroTitle: "Escribe libros coherentes. Un solo OS.",
+    heroText: "Scriptora no es otro chat de escritura. Es un estudio editorial completo que lleva al autor desde la primera idea hasta los archivos listos para publicar.",
     primary: "Empezar gratis",
     secondary: "Ver el sistema",
     proofSigned: "Tu workspace te espera",
@@ -218,7 +215,7 @@ const landingCopy: Record<UILanguage, {
     testimonialsTitle: "Creado para autores que se niegan a perder el hilo.",
     testimonialsText: "Notas breves de quienes usan Scriptora como cabina creativa: voz, estructura y preparacion editorial en un solo lugar.",
     finalTitle: "Abre tu estudio editorial.",
-    finalText: "Escribe tu libro o prepara tus examenes: misma cuenta, misma plataforma premium.",
+    finalText: "Planifica, escribe, revisa y prepara tu libro para publicar en una sola plataforma premium.",
   },
   fr: {
     navHow: "Fonctionnement",
@@ -226,9 +223,9 @@ const landingCopy: Record<UILanguage, {
     navPricing: "Offres",
     enter: "Entrer",
     languageLabel: "Langue interface",
-    kicker: "Author Studio + Study OS",
-    heroTitle: "Ecrivez des livres. Etudiez mieux. Un seul OS.",
-    heroText: "Scriptora n'est pas un autre chat d'ecriture. C'est un studio editorial complet pour auteurs et un moteur d'etude guide pour tous les domaines.",
+    kicker: "Systeme editorial pour auteurs",
+    heroTitle: "Ecrivez des livres coherents. Un seul OS.",
+    heroText: "Scriptora n'est pas un autre chat d'ecriture. C'est un studio editorial complet qui accompagne l'auteur de la premiere idee aux fichiers prets a publier.",
     primary: "Commencer gratuitement",
     secondary: "Voir le systeme",
     proofSigned: "Votre workspace vous attend",
@@ -262,7 +259,7 @@ const landingCopy: Record<UILanguage, {
     testimonialsTitle: "Cree pour les auteurs qui refusent de perdre le fil.",
     testimonialsText: "Notes courtes de celles et ceux qui utilisent Scriptora comme cockpit creatif: voix, structure et preparation editoriale au meme endroit.",
     finalTitle: "Ouvrez votre studio editorial.",
-    finalText: "Ecrivez votre livre ou preparez vos examens : meme compte, meme plateforme premium.",
+    finalText: "Planifiez, ecrivez, revisez et preparez votre livre a la publication sur une seule plateforme premium.",
   },
   de: {
     navHow: "So funktioniert es",
@@ -270,9 +267,9 @@ const landingCopy: Record<UILanguage, {
     navPricing: "Tarife",
     enter: "Starten",
     languageLabel: "Oberflachensprache",
-    kicker: "Author Studio + Study OS",
-    heroTitle: "Bucher schreiben. Besser lernen. Ein OS.",
-    heroText: "Scriptora ist kein weiterer Schreibchat. Es ist ein komplettes Redaktionsstudio fur Autoren und ein gefuhrtes Lernsystem fur jedes Fach.",
+    kicker: "Redaktionssystem fur Autoren",
+    heroTitle: "Koharente Bucher schreiben. Ein OS.",
+    heroText: "Scriptora ist kein weiterer Schreibchat. Es ist ein komplettes Redaktionsstudio, das Autoren von der ersten Idee bis zu publikationsfertigen Dateien begleitet.",
     primary: "Kostenlos starten",
     secondary: "System ansehen",
     proofSigned: "Dein Workspace wartet",
@@ -306,7 +303,7 @@ const landingCopy: Record<UILanguage, {
     testimonialsTitle: "Gebaut fur Autoren, die den Faden nicht verlieren wollen.",
     testimonialsText: "Kurze Notizen von Menschen, die Scriptora als kreatives Cockpit nutzen: Stimme, Struktur und Publishing-Vorbereitung an einem Ort.",
     finalTitle: "Offne dein redaktionelles Studio.",
-    finalText: "Schreibe dein Buch oder bereite Prufungen vor: derselbe Account, dieselbe Premium-Plattform.",
+    finalText: "Plane, schreibe, uberarbeite und veroffentliche dein Buch auf einer einzigen Premium-Plattform.",
   },
 };
 
@@ -456,13 +453,6 @@ const landingPlans: Record<string, Record<UILanguage, {
     fr: { name: "Studio", period: "/mois", description: "Production serieuse pour livres longs, couverture, audit, KDP et projets multiples.", features: ["25 000 credits/mois", "100 Blueprints/mois", "Couverture, KDP et Radar", "Livres longs et catalogues"] },
     de: { name: "Studio", period: "/Monat", description: "Ernsthafte Produktion fur lange Bucher, Cover, Audit, KDP und mehrere Projekte.", features: ["25.000 Credits/Monat", "100 Blueprints/Monat", "Cover, KDP und Radar", "Lange Bucher und Kataloge"] },
   },
-  study_os_pro: {
-    en: { name: "Study OS Pro", period: "/month", description: "One simple study subscription: summaries, quizzes, flashcards and oral practice with fair limits.", features: ["€20/month", "Usage included with fair limits", "PDF, DOCX, EPUB, notes", "Fast local mode when needed"] },
-    it: { name: "Study OS Pro", period: "/mese", description: "Un abbonamento studio semplice: riassunti, quiz, flashcard e interrogazione con limiti equi.", features: ["20 €/mese", "Uso incluso con limiti equi", "PDF, DOCX, EPUB, appunti", "Modalità rapida se serve"] },
-    es: { name: "Study OS Pro", period: "/mes", description: "Una suscripcion de estudio simple: resumenes, quizzes, flashcards y practica oral con limites justos.", features: ["20 €/mes", "Uso incluido con limites justos", "PDF, DOCX, EPUB, apuntes", "Modo rapido si hace falta"] },
-    fr: { name: "Study OS Pro", period: "/mois", description: "Un abonnement etude simple: resumes, quiz, flashcards et oral avec limites equitables.", features: ["20 €/mois", "Usage inclus avec limites", "PDF, DOCX, EPUB, notes", "Mode rapide si necessaire"] },
-    de: { name: "Study OS Pro", period: "/Monat", description: "Ein einfaches Lernabo: Zusammenfassungen, Quizze, Flashcards und mundliche Ubung mit fairen Limits.", features: ["20 €/Monat", "Nutzung mit fairen Limits", "PDF, DOCX, EPUB, Notizen", "Schneller Modus bei Bedarf"] },
-  },
 };
 
 export function ScriptoraLanding({
@@ -476,29 +466,6 @@ export function ScriptoraLanding({
   const lang = useUILanguage();
   const copy = landingCopy[lang] ?? landingCopy.en;
   const showLiveProduct = canStart && (isSignedIn || devOn);
-  const navigate = useNavigate();
-  const logoTapCountRef = useRef(0);
-  const logoTapTimerRef = useRef<number | null>(null);
-
-  const onSecretDiagnostics = () => {
-    logoTapCountRef.current += 1;
-
-    if (logoTapTimerRef.current) {
-      window.clearTimeout(logoTapTimerRef.current);
-    }
-
-    if (logoTapCountRef.current >= 3) {
-      logoTapCountRef.current = 0;
-      navigate("/diagnostics");
-      return;
-    }
-
-    logoTapTimerRef.current = window.setTimeout(() => {
-      logoTapCountRef.current = 0;
-    }, 1200);
-  };
-
-
   useEffect(() => {
     document.title = "Scriptora OS — Build Books That Sell";
   }, []);
@@ -506,7 +473,6 @@ export function ScriptoraLanding({
     AUTHOR_SUBSCRIPTION_PLANS.find((plan) => plan.id === "free"),
     AUTHOR_SUBSCRIPTION_PLANS.find((plan) => plan.id === "pro_author"),
     AUTHOR_SUBSCRIPTION_PLANS.find((plan) => plan.id === "studio"),
-    STUDENT_SUBSCRIPTION_PLANS.find((plan) => plan.id === "study_os_pro"),
   ].filter((plan): plan is SubscriptionPlanDefinition => Boolean(plan));
 
   return (
@@ -516,7 +482,7 @@ export function ScriptoraLanding({
       <header className="scriptora-landing-nav">
         <button
           type="button"
-          onClick={() => { onLogoClick?.(); onSecretDiagnostics(); }}
+          onClick={onLogoClick}
           className="scriptora-landing-brand"
           aria-label="SCRIPTORA"
           title="SCRIPTORA"
@@ -534,7 +500,7 @@ export function ScriptoraLanding({
         </button>
 
         <nav className="hidden items-center gap-6 text-xs font-semibold text-white/58 md:flex">
-          <a href="#dual-path">{lang === "it" ? "Scrivi · Studia" : "Write · Study"}</a>
+          <a href="#dual-path">{lang === "it" ? "Dall'idea al libro" : "From idea to book"}</a>
           <a href="#product-flow">{lang === "it" ? "Flusso" : "Flow"}</a>
           <a href="#features">{copy.navTools}</a>
           <a href="#testimonials">{copy.testimonialsLabel}</a>
@@ -590,8 +556,8 @@ export function ScriptoraLanding({
           </div>
           <p className="scriptora-landing-trust-line">
             {lang === "it"
-              ? "Libri · Blueprint · KDP · Export · Dispense · Quiz · Flashcard"
-              : "Books · Blueprint · KDP · Export · Notes · Quizzes · Flashcards"}
+              ? "Libri · Blueprint · Capitoli · Cover · KDP · Export"
+              : "Books · Blueprint · Chapters · Cover · KDP · Export"}
           </p>
           <div className="scriptora-landing-proof">
             <span>{isSignedIn ? copy.proofSigned : copy.proofGuest}</span>
@@ -635,43 +601,11 @@ export function ScriptoraLanding({
                 [lang === "it" ? "Piani autore" : "Author plans", "€9,99 → €99,99"],
                 [lang === "it" ? "Crediti extra" : "Extra credits", "500 → 25.000"],
                 [lang === "it" ? "Singolo libro" : "Single book", PAY_PER_PROJECT_TIERS[0].priceLabel],
-                ["Study OS Pro", "20 €/mese"],
+                ["Blueprint Preview", lang === "it" ? "3 gratis" : "3 free"],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-2xl border border-sky-300/18 bg-sky-300/10 px-4 py-3">
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-100/55">{label}</p>
                   <p className="mt-1 text-2xl font-black tabular-nums text-sky-100">{value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="scriptora-landing-section">
-        <div className="rounded-[2rem] border border-emerald-300/20 bg-gradient-to-br from-emerald-300/12 via-white/[0.035] to-transparent p-6 sm:p-8">
-          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
-            <div>
-              <div className="scriptora-landing-section-label text-emerald-200">
-                {lang === "it" ? "Study OS · 20 €/mese" : "Study OS · €20/month"}
-              </div>
-              <h2 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl">
-                {lang === "it" ? "Studia senza contare crediti." : "Study without counting credits."}
-              </h2>
-              <p className="mt-4 max-w-xl text-sm leading-6 text-white/62">
-                {lang === "it"
-                  ? "Upload materiali, riassunti, quiz, flashcard, interrogazioni guidate, attestati e piano studio. Uso incluso con limiti equi anti-abuso, rinnovo mensile chiaro."
-                  : "Upload materials, summaries, quizzes, flashcards, guided oral practice, certificates and study plans. Usage included with fair anti-abuse limits and clear monthly renewal."}
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                [lang === "it" ? "Sessioni/mese" : "Sessions/month", String(STUDY_USAGE_LIMITS.monthlySessions)],
-                [lang === "it" ? "Materiali/settimana" : "Materials/week", String(STUDY_USAGE_LIMITS.weeklyMaterials)],
-                [lang === "it" ? "Upload massimo" : "Max upload", `${STUDY_USAGE_LIMITS.maxUploadMb} MB`],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-2xl border border-emerald-300/18 bg-emerald-300/10 px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-100/55">{label}</p>
-                  <p className="mt-1 text-2xl font-black tabular-nums text-emerald-100">{value}</p>
                 </div>
               ))}
             </div>
@@ -854,7 +788,6 @@ export function ScriptoraLanding({
           <button type="button" onClick={onEnter}>{copy.enter}</button>
           <a href="/auth">{lang === "it" ? "Accedi" : "Sign in"}</a>
           <a href="/pricing">{copy.navPricing}</a>
-          <a href="/install">{lang === "it" ? "Installa app" : "Install app"}</a>
           <a href="/legal#privacy">Privacy</a>
           <a href="/legal#terms">{lang === "it" ? "Termini" : "Terms"}</a>
           <a href="/legal#credits">{lang === "it" ? "Crediti" : "Credits"}</a>

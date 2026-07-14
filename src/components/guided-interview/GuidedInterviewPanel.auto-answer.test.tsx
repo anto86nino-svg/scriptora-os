@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { GuidedInterviewPanel } from "./GuidedInterviewPanel";
 import { safeDisplayText } from "@/lib/safe-display-text";
@@ -71,6 +71,26 @@ describe("safeDisplayText regression", () => {
 });
 
 describe("GuidedInterviewPanel auto-answer", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  it("starts from the current book idea without opening synthetic foundations immediately", () => {
+    const initialIdea = "Una restauratrice trova messaggi della madre sotto la vernice dei quadri.";
+    render(
+      <GuidedInterviewPanel
+        variant="desktop"
+        selectedGenre="thriller"
+        initialIdea={initialIdea}
+        language="Italian"
+      />,
+    );
+
+    expect(screen.getByText(initialIdea)).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /Fondamenta del libro/i })).not.toBeInTheDocument();
+  });
+
   it("renders Genera 3 risposte without crashing", () => {
     render(
       <GuidedInterviewPanel

@@ -43,6 +43,26 @@ describe("contextual interview suggestion engine", () => {
     expect(labels.some((l) => /tensione|paura|minaccia|colpi|verità/i.test(l))).toBe(true);
   });
 
+  it("does not classify a novel as study content because the pen name contains Studio", () => {
+    const state = {
+      ...stateFromIdea("Una restauratrice trova messaggi della madre scomparsa sotto la vernice dei quadri."),
+      selectedGenre: "literary-fiction" as const,
+      extracted: {
+        ...stateFromIdea("Una restauratrice trova messaggi della madre scomparsa sotto la vernice dei quadri.").extracted,
+        authorName: "Scriptora Studio",
+      },
+      messages: [
+        ...stateFromIdea("Una restauratrice trova messaggi della madre scomparsa sotto la vernice dei quadri.").messages,
+        { id: "identity", role: "user" as const, content: "Sì, confermo: Scriptora Studio", createdAt: 2 },
+      ],
+    };
+
+    const signals = inferInterviewBookSignals(state);
+    const labels = chipLabels(state, "targetReader");
+    expect(signals.category).toBe("literary-fiction");
+    expect(labels.some((label) => /student|universit|esame|metodo di studio/i.test(label))).toBe(false);
+  });
+
   it("dark romance input gets romance chips", () => {
     const state = stateFromIdea("Un dark romance slow burn con due personaggi feriti.");
     const signals = inferInterviewBookSignals(state);
@@ -61,14 +81,14 @@ describe("contextual interview suggestion engine", () => {
     expect(labels.some((l) => /bloccat|professionist|metodo|disciplin/i.test(l))).toBe(true);
   });
 
-  it("study input gets university/exam chips", () => {
+  it("educational input stays in the author manual flow", () => {
     const state = stateFromIdea(
       "Un libro per studenti universitari che devono preparare un esame difficile.",
     );
     const signals = inferInterviewBookSignals(state);
-    expect(signals.category).toBe("study");
+    expect(signals.category).not.toBe("study");
     const labels = chipLabels(state, "targetReader");
-    expect(labels.some((l) => /student|universit|esame|metodo|memoria/i.test(l))).toBe(true);
+    expect(labels.some((l) => /student|universit|esame|metodo di studio/i.test(l))).toBe(false);
   });
 
   it("poetry input gets poetry chips", () => {

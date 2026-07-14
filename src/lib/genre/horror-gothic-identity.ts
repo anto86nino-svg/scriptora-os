@@ -4,6 +4,8 @@ export type HorrorGothicIdentityParts = {
   subgenre?: string;
   idea?: string;
   bookFormat?: string;
+  setting?: string;
+  centralDynamic?: string;
 };
 
 export function normalizeHorrorGothicText(value: unknown): string {
@@ -16,7 +18,7 @@ export function normalizeHorrorGothicText(value: unknown): string {
 
 export function buildHorrorGothicIdentityString(parts: HorrorGothicIdentityParts): string {
   return normalizeHorrorGothicText(
-    [parts.genre, parts.subcategory, parts.subgenre, parts.idea, parts.bookFormat]
+    [parts.genre, parts.subcategory, parts.subgenre, parts.idea, parts.bookFormat, parts.setting, parts.centralDynamic]
       .filter(Boolean)
       .join(" "),
   );

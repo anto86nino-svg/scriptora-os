@@ -41,6 +41,7 @@ import { toast } from "sonner";
 const WATCHLIST_KEY = "kdp.niche.watchlist.v1";
 
 export interface NicheImport {
+  name?: string;
   genre: string;
   targetAudience: string;
   bookPromise: string;

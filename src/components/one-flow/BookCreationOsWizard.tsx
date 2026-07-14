@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { lazy, startTransition, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   X, ArrowLeft, ArrowRight, Rocket, Sparkles, Plus, Trash2, Users, Loader2,
   CheckCircle2, AlertTriangle, BookOpen, Clock3, Info,
@@ -14,6 +14,7 @@ import {
 import {
   applyAuthorIdentityToConfig,
   isUserAuthorIdentityConfigured,
+  normalizeAuthorIdentity,
   saveAuthorIdentity,
 } from "@/lib/author-identity";
 import {
@@ -34,7 +35,9 @@ import {
   parseHandoffLanguage,
   normalizeHandoffGenre,
   applyInterviewGenreToWizard,
+  deriveForgeWizardPrefill,
   formatForgeTime,
+  parseWordsPerChapterTarget,
 } from "./wizard/utils";
 
 import { STUDIO_STEPS, AMAZON_MARKETPLACES, STUDIO_GENRES, STUDIO_LANGUAGES } from "@/lib/book-config-studio/constants";
@@ -80,7 +83,6 @@ import {
   TITLE_FORGE_PHASES,
   WIZARD_TITLE_FREE_REGENS,
 } from "@/lib/book-creation-os/title-generator";
-import { BlueprintTheater } from "@/components/blueprint-theater/BlueprintTheater";
 import { consumeForgeBrief } from "@/lib/one-flow/forge-brief-prefill";
 import {
   buildForgeGuidedBriefExtras,
@@ -130,7 +132,6 @@ import {
   resolveWizardBookFormat,
   applyDominanceToWizardPatch,
 } from "@/lib/book-forge/genre-lock-wizard";
-import { GuidedInterviewPanel } from "@/components/guided-interview/GuidedInterviewPanel";
 import { buildIdeaBookDraft } from "@/lib/book-creation-os/idea-book-flow";
 import { analyzeConceptFromIdea } from "@/lib/concept-dominance";
 import GuidedFieldActions from "@/components/book-forge/GuidedFieldActions";
@@ -144,11 +145,18 @@ import {
   resolveAuthorFoundationsToConfig,
   type AuthorFoundations,
 } from "@/lib/book-forge/author-format-genre-catalog";
-import StepApprovalChecklist, {
+import {
+  default as StepApprovalChecklist,
   approvalChecklistComplete,
   type ApprovalCheckItem,
 } from "@/components/book-forge/StepApprovalChecklist";
 
+const BlueprintTheater = lazy(() =>
+  import("@/components/blueprint-theater/BlueprintTheater").then((m) => ({ default: m.BlueprintTheater })),
+);
+const GuidedInterviewPanel = lazy(() =>
+  import("@/components/guided-interview/GuidedInterviewPanel").then((m) => ({ default: m.GuidedInterviewPanel })),
+);
 interface BookCreationOsWizardProps {
   open: boolean;
   onClose: () => void;
@@ -156,7 +164,9 @@ interface BookCreationOsWizardProps {
   onAuthorIdentity?: () => void;
   onManualStudio?: (config: BookConfig) => void;
   onStudioComplete?: (payload: StudioLaunchPayload) => void;
-  onGenerateBlueprint?: (config: BookConfig) => Promise<BookBlueprint>;
+  onGenerateBlueprint?: (config: BookConfig) => Promise<
+    BookBlueprint | { blueprint: BookBlueprint; config: BookConfig; projectId?: string }
+  >;
   onDetectIntent?: (idea: string, language: Language) => Promise<{
     genre: string;
     subcategory: string;
@@ -174,67 +184,6 @@ interface BookCreationOsWizardProps {
   /** Render inside mobile creation shell — single page scroll, no modal overlay. */
   embeddedInMobileForge?: boolean;
   mobileForgeHeader?: ReactNode;
-}
-
-function emptyCharacter(): BookCharacter {
-  return { name: "", role: "", wound: "", secret: "", externalDesire: "", personality: "" };
-}
-
-
-
-function cleanStr(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function parseHandoffLanguage(raw: unknown): Language | null {
-  const value = cleanStr(raw).toLowerCase();
-  if (!value) return null;
-  if (/ingles|english/.test(value)) return "English";
-  if (/spagn|spanish|español/.test(value)) return "Spanish";
-  if (/franc|french/.test(value)) return "French";
-  if (/tedesc|german|deutsch/.test(value)) return "German";
-  if (/ital|italian/.test(value)) return "Italian";
-  return null;
-}
-
-function normalizeHandoffGenre(raw: unknown): Genre | null {
-  const value = cleanStr(raw).toLowerCase();
-  if (!value) return null;
-  if (/dark.?romance/.test(value)) return "dark-romance";
-  if (/romance/.test(value)) return "romance";
-  if (/thriller|crime|suspense/.test(value)) return "thriller";
-  if (/fantasy/.test(value)) return "fantasy";
-  if (/horror/.test(value)) return "horror";
-  if (/self.?help|crescita|mindset/.test(value)) return "self-help";
-  if (/business|marketing|leadership/.test(value)) return "business";
-  if (/poetry|poesia/.test(value)) return "poetry";
-  if (/manual|manuale|guide|guida/.test(value)) return "manual";
-  return null;
-}
-
-function applyInterviewGenreToWizard(
-  selectedGenre: string | undefined,
-  setters: {
-    setBookTypeId: (v: string) => void;
-    setGenre: (v: Genre) => void;
-    setLevel1BookType: (v: Level1BookType) => void;
-  },
-) {
-  const map: Record<string, { bookTypeId: string; genre: Genre }> = {
-    romance: { bookTypeId: "romance", genre: "romance" },
-    "dark-romance": { bookTypeId: "dark-romance", genre: "dark-romance" },
-    thriller: { bookTypeId: "thriller", genre: "thriller" },
-    fantasy: { bookTypeId: "fantasy", genre: "fantasy" },
-    "self-help": { bookTypeId: "self-help", genre: "self-help" },
-    business: { bookTypeId: "business", genre: "business" },
-    manual: { bookTypeId: "manual", genre: "manual" },
-    poetry: { bookTypeId: "poetry", genre: "poetry" },
-    "literary-fiction": { bookTypeId: "literary", genre: "literary-fiction" },
-  };
-  const hit = map[selectedGenre || ""] ?? { bookTypeId: "literary", genre: "literary-fiction" as Genre };
-  setters.setBookTypeId(hit.bookTypeId);
-  setters.setGenre(hit.genre);
-  setters.setLevel1BookType(resolveLevel1FromBookTypeId(hit.bookTypeId));
 }
 
 const inputClass =
@@ -415,7 +364,7 @@ export function BookCreationOsWizard({
   embeddedInMobileForge = false,
   mobileForgeHeader,
 }: BookCreationOsWizardProps) {
-  useMobileForgeBodyLock(embeddedInMobileForge && open);
+  useMobileForgeBodyLock(open);
   const { plan } = usePlan();
   const isFree = plan === "free";
   const resolvedInitialStep = bookForgeHandoff
@@ -426,6 +375,7 @@ export function BookCreationOsWizard({
   const [isMobileViewport, setIsMobileViewport] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches,
   );
+  const wizardScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -763,6 +713,7 @@ export function BookCreationOsWizard({
 
   const applyForgeHandoffSeed = useCallback((seed: ForgeInterviewSeed) => {
     setForgeHandoff(seed);
+    const prefill = deriveForgeWizardPrefill(seed);
 
     const forgeTitle = resolveForgeTitle(seed);
     const forgeSubtitle = resolveForgeSubtitle(seed);
@@ -777,24 +728,63 @@ export function BookCreationOsWizard({
       setCommercialGoal(forgePromise);
     }
 
-    const mapped = mapForgeCharactersToBookCharacters(seed.characters);
-    if (mapped.length) setCharacters(mapped);
+    // Keep the author's premise as the source of truth. Canon and character
+    // briefs remain in forgeHandoff and are merged only when buildConfig runs.
+    if (prefill.idea) {
+      setIdea((current) => current.trim().length >= 20 ? current : prefill.idea);
+    }
+    if (prefill.authorName && !/decidiamolo|decidere|dopo/i.test(prefill.authorName)) {
+      setAuthorName(prefill.authorName);
+    }
+    if (prefill.targetReader) setTargetReader(prefill.targetReader);
+    if (prefill.narrativePromise) setNarrativePromise(prefill.narrativePromise);
+    if (prefill.coreConflict) setCoreConflict(prefill.coreConflict);
+    if (prefill.setting) setSetting(prefill.setting);
+    if (prefill.tone) setTone(prefill.tone);
+    if (prefill.openingHook) setOpeningHook(prefill.openingHook);
+    if (prefill.commercialGoal) setCommercialGoal(prefill.commercialGoal);
+    if (prefill.structureType) setStructureType(prefill.structureType);
+    if (prefill.wordsPerChapter) setWordsPerChapter(prefill.wordsPerChapter);
+    if (prefill.chapters) setChapters(prefill.chapters);
+    if (prefill.bookLength) {
+      const nextLength = isFree ? "short" : prefill.bookLength;
+      setBookLength(nextLength);
+      setChapterLength(nextLength);
+    }
+    if (prefill.subchapters) {
+      setSubchaptersEnabled(prefill.subchapters.enabled);
+      setSubchaptersPerChapter(prefill.subchapters.count);
+    }
+    if (prefill.protagonist) setProtagonist(prefill.protagonist);
+    if (prefill.antagonist) setAntagonist(prefill.antagonist);
+    if (prefill.secondaryCast) setSecondaryCast(prefill.secondaryCast);
+    if (prefill.canonRules) setCanonRules(prefill.canonRules);
+    if (prefill.forbiddenContent) setForbiddenContent(prefill.forbiddenContent);
+    if (prefill.mainTwists) setMainTwists(prefill.mainTwists);
+    if (prefill.endingType) setEndingType(prefill.endingType);
 
-    const { canonBrief, characterBibleText } = buildForgeGuidedBriefExtras(seed);
-    if (canonBrief || characterBibleText) {
-      setIdea((prev) => {
-        const extras = [characterBibleText, canonBrief].filter(Boolean).join("\n\n");
-        if (!extras) return prev;
-        if (prev.includes("BLUEPRINT CANON BRIEF")) return prev;
-        return prev.trim() ? `${prev.trim()}\n\n${extras}` : extras;
+    const handoffLanguage = parseHandoffLanguage(seed.extracted?.language);
+    if (handoffLanguage) setLanguage(handoffLanguage);
+    if (seed.selectedGenre) {
+      applyInterviewGenreToWizard(seed.selectedGenre, {
+        setBookTypeId,
+        setGenre,
+        setLevel1BookType,
       });
     }
-  }, []);
+    if (seed.bookFoundationLocked) setFoundationsConfirmed(true);
+
+    const mapped = mapForgeCharactersToBookCharacters(seed.characters);
+    if (mapped.length) setCharacters(mapped);
+  }, [isFree]);
 
   useEffect(() => {
     if (!open || !bookForgeHandoff) return;
     const p = bookForgeHandoff.prefill;
-    saveProjectHandoffSeed(buildProjectHandoffSeed(bookForgeHandoff.source, {
+    const handoffSource = bookForgeHandoff.source === "dashboard-cta"
+      ? "dashboard"
+      : bookForgeHandoff.source;
+    saveProjectHandoffSeed(buildProjectHandoffSeed(handoffSource, {
       title: p.title,
       subtitle: p.subtitle || p.promise,
       authorName: p.authorName || p.author || p.writerName,
@@ -943,9 +933,12 @@ export function BookCreationOsWizard({
     saveForgeDnaLock(state);
     setDnaConfirmed(true);
     setShowAdvancedForge(true);
+    setUseGuidedInterview(false);
+    setStep((current) => Math.max(2, current));
   }, [applyForgeHandoffSeed]);
 
   const [blueprintPreview, setBlueprintPreview] = useState<BookBlueprint | null>(null);
+  const [blueprintConfigSnapshot, setBlueprintConfigSnapshot] = useState<BookConfig | null>(null);
   const [generatingBlueprint, setGeneratingBlueprint] = useState(false);
   const [blueprintError, setBlueprintError] = useState<string | null>(null);
   const [blueprintElapsedSeconds, setBlueprintElapsedSeconds] = useState(0);
@@ -1170,13 +1163,13 @@ export function BookCreationOsWizard({
     const activeHandoff = handoffOverride ?? forgeHandoff;
     const styleDirective = profileToStyleDirective(styleProfile);
     const presetLabel = STYLE_PRESETS.find((p) => p.id === styleProfile.presetId)?.label || "Bestseller Commerciale";
-    const mergedIdentity = saveAuthorIdentity({
+    const mergedIdentity = normalizeAuthorIdentity({
       ...identityDraft,
       penName: identityDraft.penName || authorName,
       biography: identityDraft.biography || "",
       voice: identityDraft.voice || "",
       language,
-    });
+    }) || identityDraft;
     const handoffExtras = activeHandoff ? buildForgeGuidedBriefExtras(activeHandoff) : null;
     const forgedCharacters = activeHandoff
       ? mapForgeCharactersToBookCharacters(activeHandoff.characters)
@@ -1215,7 +1208,19 @@ export function BookCreationOsWizard({
       forgedCharacters.length > 0
         ? forgedCharacters
         : [
-            ...manualCharacters,
+            ...manualCharacters.map((manual) => {
+              const detailed = characters.find(
+                (character) => character.name?.trim().toLowerCase() === manual.name?.trim().toLowerCase(),
+              );
+              if (!detailed) return manual;
+              return {
+                ...manual,
+                ...detailed,
+                name: manual.name,
+                role: detailed.role?.trim() || manual.role,
+                externalDesire: detailed.externalDesire?.trim() || manual.externalDesire,
+              };
+            }),
             ...characters.filter((c) => {
               const name = String(c.name || "").trim();
               return name && !manualCharacters.some((manual) => manual.name?.toLowerCase() === name.toLowerCase());
@@ -1253,6 +1258,7 @@ export function BookCreationOsWizard({
       (activeHandoff && resolveForgeTitle(activeHandoff)) || title.trim() || "Romanzo senza titolo";
     const resolvedSubtitle =
       (activeHandoff && resolveForgeSubtitle(activeHandoff)) || subtitle.trim();
+    const explicitWordTarget = parseWordsPerChapterTarget(wordsPerChapter, chapters);
 
     const raw = normalizeBookConfig(applyAuthorIdentityToConfig({
       title: resolvedTitle,
@@ -1268,12 +1274,13 @@ export function BookCreationOsWizard({
       subgenre: subgenre.trim() || subcategory,
       tone: `${tone} · ${styleDirective}`,
       authorStyle: presetLabel,
-      authorName: authorName.trim() || mergedIdentity.penName,
-      author: authorName.trim() || mergedIdentity.penName,
+      authorName: mergedIdentity.penName || authorName.trim(),
+      author: mergedIdentity.penName || authorName.trim(),
       targetReader: targetReader.trim(),
       referenceAuthors: referenceAuthors.trim(),
       chapterLength,
-      bookLength: isFree ? "short" : bookLength,
+      bookLength: isFree ? "short" : explicitWordTarget ? "custom" : bookLength,
+      customTotalWords: !isFree && explicitWordTarget ? explicitWordTarget.totalWords : undefined,
       numberOfChapters: chapters,
       subchaptersEnabled,
       subchaptersPerChapter: subchaptersEnabled ? subchaptersPerChapter : 0,
@@ -1356,6 +1363,8 @@ const persistDraft = useCallback(() => {
         avoidThemes, violenceLevel, darknessLevel, spiceLevel, explicitLanguage, romancePresence,
         supernaturalPresence, marketTarget, publishingPlatform, kdpCategory, initialKeywords,
         shortDescription, marketingPromise,
+        identityDraft, authorFoundations, foundationsConfirmed,
+        blueprintPreview, blueprintConfigSnapshot,
       }));
     } catch { /* noop */ }
   }, [
@@ -1368,6 +1377,8 @@ const persistDraft = useCallback(() => {
     avoidThemes, violenceLevel, darknessLevel, spiceLevel, explicitLanguage, romancePresence,
     supernaturalPresence, marketTarget, publishingPlatform, kdpCategory, initialKeywords,
     shortDescription, marketingPromise,
+    identityDraft, authorFoundations, foundationsConfirmed,
+    blueprintPreview, blueprintConfigSnapshot,
   ]);
 
   useEffect(() => {
@@ -1379,13 +1390,10 @@ const persistDraft = useCallback(() => {
       const draft = JSON.parse(raw);
       const draftStep = Number(draft.step ?? 0);
 
-      if (draftStep >= 6) {
-        sessionStorage.removeItem(STUDIO_DRAFT_STORAGE_KEY);
-        setStep(0);
-        return;
+      if (draft.step != null) {
+        const restoredStep = draftStep >= 7 && !draft.blueprintPreview ? 6 : draftStep;
+        setStep(Math.max(0, Math.min(STUDIO_STEPS.length - 1, restoredStep)));
       }
-
-      if (draft.step != null) setStep(draftStep);
       if (draft.title) setTitle(draft.title);
       if (draft.subtitle) setSubtitle(draft.subtitle);
       if (draft.idea) setIdea(draft.idea);
@@ -1448,8 +1456,21 @@ const persistDraft = useCallback(() => {
       if (draft.initialKeywords) setInitialKeywords(draft.initialKeywords);
       if (draft.shortDescription) setShortDescription(draft.shortDescription);
       if (draft.marketingPromise) setMarketingPromise(draft.marketingPromise);
+      if (draft.identityDraft) setIdentityDraft(draft.identityDraft);
+      if (draft.authorFoundations) setAuthorFoundations(draft.authorFoundations);
+      if (draft.foundationsConfirmed != null) setFoundationsConfirmed(Boolean(draft.foundationsConfirmed));
+      if (draft.blueprintPreview?.chapterOutlines?.length) setBlueprintPreview(draft.blueprintPreview);
+      if (draft.blueprintConfigSnapshot) setBlueprintConfigSnapshot(draft.blueprintConfigSnapshot);
     } catch { /* noop */ }
   }, [open, bookForgeHandoff]);
+
+  useEffect(() => {
+    if (!open) return;
+    const frame = window.requestAnimationFrame(() => {
+      wizardScrollRef.current?.scrollTo?.({ top: 0, behavior: "auto" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, step]);
 
   useEffect(() => {
     if (!open) return;
@@ -2002,7 +2023,9 @@ const persistDraft = useCallback(() => {
   };
 
   const applyFeaturedBookType = (type: (typeof FEATURED_BOOK_TYPES)[number]) => {
-    applyStudioGenre(type.id, { featuredSubgenre: type.subgenre });
+    applyStudioGenre(type.id, {
+      featuredSubgenre: "subgenre" in type ? type.subgenre : undefined,
+    });
   };
 
   const applyInference = (inference: GenreInference, opts?: { keepTitle?: boolean; lockGenre?: boolean }) => {
@@ -2183,41 +2206,42 @@ const persistDraft = useCallback(() => {
   };
 
   const acceptAutoDetection = () => {
-    if (!pendingAutoDetection) return;
-    const mapped = buildFoundationsFromDetection(pendingAutoDetection);
+    const acceptedDetection = pendingAutoDetection ?? foundationDetectionSuggestion;
+    if (!acceptedDetection) return;
+    const mapped = buildFoundationsFromDetection(acceptedDetection);
     if (mapped?.formatId && mapped.genreId && isAuthorFoundationsComplete({
       formatId: mapped.formatId,
       formatLabel: mapped.formatLabel || "",
       genreId: mapped.genreId,
       genreLabel: mapped.genreLabel || "",
-      subgenre: pendingAutoDetection.subgenre || mapped.subgenre,
-      targetReader: pendingAutoDetection.targetReader,
-      tone: pendingAutoDetection.tone,
+      subgenre: acceptedDetection.subgenre || mapped.subgenre,
+      targetReader: acceptedDetection.targetReader,
+      tone: acceptedDetection.tone,
     })) {
       applyAuthorFoundations({
         formatId: mapped.formatId,
         formatLabel: mapped.formatLabel || "",
         genreId: mapped.genreId,
         genreLabel: mapped.genreLabel || "",
-        subgenre: pendingAutoDetection.subgenre || mapped.subgenre,
-        targetReader: pendingAutoDetection.targetReader,
-        tone: pendingAutoDetection.tone,
+        subgenre: acceptedDetection.subgenre || mapped.subgenre,
+        targetReader: acceptedDetection.targetReader,
+        tone: acceptedDetection.tone,
       });
     } else {
-      applyStudioGenre(pendingAutoDetection.bookTypeId, { force: true, lockGenre: true });
-      setGenre(pendingAutoDetection.genre as Genre);
-      setCategory(pendingAutoDetection.category);
-      setSubcategory(pendingAutoDetection.subcategory);
-      setBookFormat(pendingAutoDetection.bookFormat);
-      if (pendingAutoDetection.subgenre) setSubgenre(pendingAutoDetection.subgenre);
-      if (pendingAutoDetection.tone) setTone(pendingAutoDetection.tone);
-      if (pendingAutoDetection.targetReader) setTargetReader(pendingAutoDetection.targetReader);
+      applyStudioGenre(acceptedDetection.bookTypeId, { force: true, lockGenre: true });
+      setGenre(acceptedDetection.genre as Genre);
+      setCategory(acceptedDetection.category);
+      setSubcategory(acceptedDetection.subcategory);
+      setBookFormat(acceptedDetection.bookFormat);
+      if (acceptedDetection.subgenre) setSubgenre(acceptedDetection.subgenre);
+      if (acceptedDetection.tone) setTone(acceptedDetection.tone);
+      if (acceptedDetection.targetReader) setTargetReader(acceptedDetection.targetReader);
       setGenreManuallyLocked(true);
       setAuthorFormatLocked(true);
       setFoundationsConfirmed(true);
     }
     setGenreDetectionAccepted(true);
-    const detectedLabel = pendingAutoDetection.detectedLabel;
+    const detectedLabel = acceptedDetection.detectedLabel;
     setPendingAutoDetection(null);
     setAutoDetectionDismissed(true);
     toast.success(`Suggerimento confermato: ${detectedLabel}.`);
@@ -2358,7 +2382,13 @@ const persistDraft = useCallback(() => {
       if (!targetReader.trim()) {
         toast.message("Puoi indicare il pubblico ideale ora o completarlo prima del blueprint.");
       }
-      saveAuthorIdentity({ ...identityDraft, penName: identityDraft.penName || authorName, language });
+      const savedIdentity = saveAuthorIdentity({
+        ...identityDraft,
+        penName: identityDraft.penName || authorName,
+        language,
+      });
+      setIdentityDraft(savedIdentity);
+      if (!authorName.trim()) setAuthorName(savedIdentity.penName);
     }
     if (step === 2 && chapters < 1) {
       toast.error("Imposta il numero di capitoli per la struttura del libro.");
@@ -2423,8 +2453,11 @@ const persistDraft = useCallback(() => {
       setGeneratingBlueprint(true);
       setBlueprintError(null);
       try {
-        const bp = await onGenerateBlueprint(gatedConfig);
+        const generated = await onGenerateBlueprint(gatedConfig);
+        const bp = "blueprint" in generated ? generated.blueprint : generated;
+        const exactConfig = "blueprint" in generated ? generated.config : gatedConfig;
         setBlueprintPreview(bp);
+        setBlueprintConfigSnapshot(exactConfig);
         setStep(7);
       } catch (e) {
         const message = humanizeBlueprintError(e, gatedConfig);
@@ -2517,7 +2550,7 @@ const persistDraft = useCallback(() => {
     }
     setLaunching(true);
     try {
-      const config = buildConfig();
+      const config = blueprintConfigSnapshot || buildConfig();
       const payload: StudioLaunchPayload = {
         config: { ...config, configStatus: "approved" },
         blueprint: blueprintPreview,
@@ -2623,6 +2656,7 @@ const persistDraft = useCallback(() => {
         </div>
 
         <div
+            ref={wizardScrollRef}
             className={
               embeddedInMobileForge
                 ? "scriptora-book-forge-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 py-4 sm:px-5 sm:py-5"
@@ -2664,15 +2698,18 @@ const persistDraft = useCallback(() => {
                   </div>
                 )}
               >
-                <GuidedInterviewPanel
-                  selectedGenre={genre}
-                  language={language}
-                  penName={authorName}
-                  authorName={authorName}
-                  variant={embeddedInMobileForge || isMobileViewport ? "mobile" : "desktop"}
-                  unifiedScroll={embeddedInMobileForge}
-                  onConfirmDna={handleForgeDnaConfirm}
-                />
+                <Suspense fallback={null}>
+                  <GuidedInterviewPanel
+                    selectedGenre={genre}
+                    initialIdea={idea}
+                    language={language}
+                    penName={authorName}
+                    authorName={authorName}
+                    variant={embeddedInMobileForge || isMobileViewport ? "mobile" : "desktop"}
+                    unifiedScroll={embeddedInMobileForge}
+                    onConfirmDna={handleForgeDnaConfirm}
+                  />
+                </Suspense>
               </WelcomeForgePanel>
             </div>
           ) : null}
@@ -3183,7 +3220,18 @@ const persistDraft = useCallback(() => {
                 </label>
               </div>
               <label className="block text-sm text-white/70">Capitoli: {chapters}
-                <input type="range" min={6} max={32} value={chapters} onChange={(e) => setChapters(Number(e.target.value))} className="mt-2 w-full accent-emerald-400" />
+                <div className="mt-2 flex items-center gap-3">
+                  <input type="range" min={6} max={32} value={chapters} onChange={(e) => setChapters(Number(e.target.value))} className="min-w-0 flex-1 accent-emerald-400" />
+                  <input
+                    type="number"
+                    min={6}
+                    max={32}
+                    value={chapters}
+                    aria-label="Numero capitoli"
+                    onChange={(event) => setChapters(Math.min(32, Math.max(6, Number(event.target.value) || 6)))}
+                    className="w-20 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-center text-sm text-white focus:border-emerald-400/50 focus:outline-none"
+                  />
+                </div>
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {(["short", "medium", "long"] as const).map((len) => (
@@ -3518,26 +3566,28 @@ const persistDraft = useCallback(() => {
                   )}
                 </div>
               )}
-              <BlueprintTheater
-                mode="forge"
-                title={title}
-                subtitle={subtitle}
-                author={authorName || identityDraft.penName}
-                genre={[genre, subcategory].filter(Boolean).join(" · ")}
-                blueprint={blueprintPreview}
-                generatingBlueprint={generatingBlueprint}
-                blueprintElapsedSeconds={blueprintElapsedSeconds}
-                forgeCopy={forgeTheaterCopy}
-                chapterCount={chapters}
-                editable={step === 7 && Boolean(blueprintPreview)}
-                reorderable={step === 7 && Boolean(blueprintPreview)}
-                onChapterTitleChange={updateBlueprintChapterTitle}
-                onSubchapterTitleChange={updateBlueprintSubchapterTitle}
-                onReorderChapter={reorderBlueprintChapter}
-                onTitleChange={setTitle}
-                onSubtitleChange={setSubtitle}
-                italianUi={language === "Italian"}
-              />
+              <Suspense fallback={null}>
+                <BlueprintTheater
+                  mode="forge"
+                  title={title}
+                  subtitle={subtitle}
+                  author={authorName || identityDraft.penName}
+                  genre={[genre, subcategory].filter(Boolean).join(" · ")}
+                  blueprint={blueprintPreview}
+                  generatingBlueprint={generatingBlueprint}
+                  blueprintElapsedSeconds={blueprintElapsedSeconds}
+                  forgeCopy={forgeTheaterCopy}
+                  chapterCount={chapters}
+                  editable={step === 7 && Boolean(blueprintPreview)}
+                  reorderable={step === 7 && Boolean(blueprintPreview)}
+                  onChapterTitleChange={updateBlueprintChapterTitle}
+                  onSubchapterTitleChange={updateBlueprintSubchapterTitle}
+                  onReorderChapter={reorderBlueprintChapter}
+                  onTitleChange={setTitle}
+                  onSubtitleChange={setSubtitle}
+                  italianUi={language === "Italian"}
+                />
+              </Suspense>
             </div>
           ) : !useGuidedInterview && step === 6 ? (
             <div className="space-y-4 text-center">
@@ -3590,7 +3640,9 @@ const persistDraft = useCallback(() => {
             <div className="space-y-5">
               <h2 className="text-2xl font-semibold text-white">Approvazione autore</h2>
               <p className="text-sm text-white/65">Rivedi blueprint e checklist prima di aprire Writer.</p>
-              <StepApprovalChecklist items={approvalChecklistItems} />
+              <Suspense fallback={null}>
+                <StepApprovalChecklist items={approvalChecklistItems} />
+              </Suspense>
             </div>
           ) : null}
         </div>

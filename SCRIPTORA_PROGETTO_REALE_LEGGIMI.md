@@ -2,7 +2,7 @@
 
 Questo è il progetto reale su cui lavorare:
 
-/Users/antoninocampanella/Desktop/SCRIPTORA_WORKSPACE/01_LAVORO_scriptora-dev-lab
+/Users/antoninocampanella/Developer/Startap scriptora.ac
 
 NON lavorare sui backup per modifiche nuove.
 
@@ -35,7 +35,7 @@ Commit stabile:
 Prima di ogni modifica:
 
 1. Entrare sempre qui:
-   cd ~/Desktop/SCRIPTORA_WORKSPACE/01_LAVORO_scriptora-dev-lab
+   cd ~/Developer/'Startap scriptora.ac'
 
 2. Controllare:
    pwd

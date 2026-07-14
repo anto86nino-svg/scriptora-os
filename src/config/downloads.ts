@@ -37,6 +37,7 @@ export const buildChannel = readEnv("VITE_BUILD_CHANNEL", "alpha");
 
 const ANDROID_APK = readEnv("VITE_ANDROID_APK_URL", "");
 const ANDROID_AAB = readEnv("VITE_ANDROID_AAB_URL", "");
+const IOS_PROJECT_ZIP = readEnv("VITE_IOS_PROJECT_ZIP_URL", "");
 const MAC_DMG = readEnv("VITE_MAC_DMG_URL", "");
 const MAC_ZIP = readEnv("VITE_MAC_ZIP_URL", "");
 const WINDOWS_EXE = readEnv("VITE_WINDOWS_EXE_URL", "");
@@ -55,13 +56,21 @@ function buildItem(
 
 export const downloadItems: DownloadItem[] = [
   buildItem({
+    id: "ios-xcode-project",
+    platform: "ios",
+    label: "iPhone · Progetto Xcode",
+    description: "Progetto Capacitor iOS completo, compilabile e installabile su iPhone tramite Xcode.",
+    url: IOS_PROJECT_ZIP,
+    fileType: "zip",
+    recommended: true,
+  }),
+  buildItem({
     id: "android-apk",
     platform: "android",
     label: "Android APK",
     description: "Installazione diretta su dispositivi Android (sideload).",
     url: ANDROID_APK,
     fileType: "apk",
-    recommended: true,
   }),
   buildItem({
     id: "android-aab",

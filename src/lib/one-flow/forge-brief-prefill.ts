@@ -1,5 +1,4 @@
-import type { AuthorIdentity } from "@/types/book";
-import type { Language } from "@/lib/book-creation-os/objectives";
+import type { AuthorIdentity, Language } from "@/types/book";
 
 export const FORGE_BRIEF_STORAGE_KEY = "scriptora-forge-brief";
 

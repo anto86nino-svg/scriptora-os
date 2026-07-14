@@ -14,7 +14,6 @@ export type InterviewBookCategory =
   | "sci-fi"
   | "self-help"
   | "business"
-  | "study"
   | "poetry"
   | "memoir"
   | "children-ya"
@@ -120,17 +119,6 @@ const CATEGORY_PATTERNS: CategoryPattern[] = [
     nonfiction: false,
     genre: "literary-fiction",
     subgenre: "Memoir",
-  },
-  {
-    category: "study",
-    patterns: [
-      /\b(studio|universit|esame|orale|verifica|studenti|comprensione|metodo di studio|memoria|concetti difficili)\b/i,
-    ],
-    weight: 1.25,
-    narrative: false,
-    nonfiction: true,
-    genre: "manual",
-    subgenre: "Studio / università",
   },
   {
     category: "self-help",
@@ -259,14 +247,6 @@ const TARGET_BY_CATEGORY: Record<InterviewBookCategory, InterviewQuickSuggestion
     chip("Principianti", "Principianti che vogliono basi solide senza fuffa."),
     chip("Esperti", "Esperti che cercano un framework più affilato."),
   ],
-  study: [
-    chip("Studenti universitari", "Studenti universitari sotto pressione d'esame."),
-    chip("Esame orale", "Chi deve preparare un esame orale difficile."),
-    chip("Verifica scritta", "Chi deve affrontare verifica scritta o concetti complessi."),
-    chip("Metodo di studio", "Lettori che vogliono un metodo di studio concreto."),
-    chip("Memoria", "Chi deve memorizzare, ripassare e tenere tutto insieme."),
-    chip("Comprensione profonda", "Studenti che vogliono capire davvero, non solo ripassare."),
-  ],
   poetry: [
     chip("Lettori sensibili", "Lettori sensibili che amano immagini, silenzi e voce."),
     chip("Voce poetica", "Chi cerca una voce poetica riconoscibile e intima."),
@@ -362,17 +342,13 @@ const TONE_BY_CATEGORY: Partial<Record<InterviewBookCategory, InterviewQuickSugg
     chip("Sfida dura", "Sfida dura, senza scuse, orientata all'azione."),
     chip("Pratico", "Pratico, concreto, basato su esempi reali."),
   ],
-  study: [
-    chip("Chiaro e guidato", "Chiaro, guidato, rassicurante ma esigente."),
-    chip("Metodico", "Metodico, strutturato, orientato al risultato."),
-    chip("Motivante", "Motivante, concreto, anti-panico."),
-    chip("Profondo", "Profondo, orientato alla comprensione vera."),
-  ],
 };
 
 function collectInterviewBlob(state: GuidedInterviewState): string {
   const parts = state.messages.filter((m) => m.role === "user").map((m) => m.content);
-  for (const value of Object.values(state.extracted ?? {})) {
+  const nonEditorialMetadata = new Set(["authorName", "language", "marketplace", "frontMatter", "backMatter"]);
+  for (const [key, value] of Object.entries(state.extracted ?? {})) {
+    if (nonEditorialMetadata.has(key)) continue;
     if (typeof value === "string" && value.trim()) parts.push(value);
   }
   return sanitizeDnaText(parts.join("\n"));
@@ -438,6 +414,17 @@ export function inferInterviewBookSignals(state: GuidedInterviewState): Intervie
   if (boost && boost !== category && confidence < 0.55) {
     category = boost;
     confidence = Math.max(confidence, 0.5);
+  }
+
+  // A confirmed narrative genre must not be overturned by metadata such as a
+  // pen name containing "Studio" or an incidental word such as "memoria".
+  const boostedPattern = boost
+    ? CATEGORY_PATTERNS.find((pattern) => pattern.category === boost)
+    : undefined;
+  const rankedPattern = CATEGORY_PATTERNS.find((pattern) => pattern.category === category);
+  if (boost && boostedPattern?.narrative && rankedPattern?.nonfiction) {
+    category = boost;
+    confidence = Math.max(confidence, 0.65);
   }
 
   const activePattern =
@@ -540,14 +527,6 @@ export function getContextualQuickSuggestions(
         chip("Finale catartico", "Un finale catartico che resta addosso."),
       ];
     }
-    if (category === "study") {
-      return [
-        chip("Metodo chiaro", "Un metodo chiaro per affrontare l'esame senza panico."),
-        chip("Comprensione reale", "Capire davvero i concetti, non solo memorizzarli."),
-        chip("Ripasso efficace", "Un sistema di ripasso efficace e realistico."),
-        chip("Sicurezza all'orale", "Più sicurezza e struttura all'esame orale."),
-      ];
-    }
   }
 
   if (questionKey === "centralConflict" || questionKey === "depthCoreFear") {
@@ -623,12 +602,6 @@ export function getContextualQuestionCopy(
         helper: "Romance, slow burn, ferite emotive, attrazione, proibito.",
       };
     }
-    if (category === "study") {
-      return {
-        question: "Quale studente deve sentirsi finalmente preparato?",
-        helper: "Università, esame, verifica, metodo, panico da prestazione.",
-      };
-    }
     if (category === "self-help") {
       return {
         question: "Chi ha bisogno davvero di questo cambiamento?",
@@ -667,10 +640,10 @@ export function getContextualQuestionCopy(
   return {};
 }
 
-export function enrichInterviewQuestion(
+export function enrichInterviewQuestion<T extends { key: string; question: string; helper?: string; quickSuggestions?: InterviewQuickSuggestion[] }>(
   state: GuidedInterviewState,
-  question: { key: string; question: string; helper?: string; quickSuggestions?: InterviewQuickSuggestion[] },
-): typeof question {
+  question: T,
+): T {
   const copy = getContextualQuestionCopy(question.key, state);
   const suggestions = getContextualQuickSuggestions(question.key, state);
   const foundation = state.bookFoundation;
@@ -690,7 +663,7 @@ export function enrichInterviewQuestion(
     helper: copy.helper ?? question.helper,
     quickSuggestions:
       suggestions.length > 0 ? suggestions : question.quickSuggestions,
-  };
+  } as T;
 }
 
 export function suggestionsAvoidSelfHelpMismatch(
@@ -725,7 +698,7 @@ export function getDirectionFallbackSuggestions(
     ];
   }
 
-  if (category === "self-help" || category === "business" || category === "study") {
+  if (category === "self-help" || category === "business" || category === "manual") {
     return [
       chip("Guida pratica", "Una guida pratica, concreta, orientata al risultato."),
       chip("Percorso di trasformazione", "Un percorso di trasformazione reale per lettori concreti."),

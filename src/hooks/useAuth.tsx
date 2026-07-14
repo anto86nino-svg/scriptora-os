@@ -48,17 +48,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      applySessionToContext(newSession, setSession, setUser);
+    let mounted = true;
+    const applyIfMounted = (nextSession: Session | null) => {
+      if (!mounted) return;
+      applySessionToContext(nextSession, setSession, setUser);
       setLoading(false);
+    };
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      applyIfMounted(newSession);
     });
 
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
-      applySessionToContext(existing, setSession, setUser);
-      setLoading(false);
+      applyIfMounted(existing);
+    }).catch(() => {
+      if (mounted) setLoading(false);
     });
 
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = useCallback(async () => {

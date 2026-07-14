@@ -1,6 +1,7 @@
 import { analyzeNovel } from "@/lib/EditorialIntelligence";
 import { evaluateBestsellerChapter } from "@/lib/bestseller-intelligence";
 import { simulateReaderEmotion } from "@/lib/narrative-intelligence-v2/reader-emotion";
+import { normalizeGenre, normalizeLanguage } from "@/lib/book-config-studio/defaults";
 
 export interface MarketPremiumScores {
   hookStrength: number;
@@ -33,7 +34,7 @@ function genreExpectationNote(genre: string, best: ReturnType<typeof evaluateBes
   if (/thriller|crime|mystery/.test(g) && best.scores.hookStrength < 65) {
     return "Thriller opening needs sharper mystery or threat in the first page.";
   }
-  if (/self-help|business/.test(g) && editorial.warnings.some(w => w.type === "generic_advice")) {
+  if (/self-help|business/.test(g) && editorial.warnings.some(w => String(w.type) === "generic_advice")) {
     return "Nonfiction reads generic — strengthen specific, actionable authority.";
   }
   if (/garden|horticult|practical|manual/.test(g) && /believe|journey|manifest/i.test(g)) {
@@ -57,7 +58,14 @@ export function computeMarketPremiumScores(input: {
   const openingEditorial = analyzeNovel(opening);
   const best = evaluateBestsellerChapter({ content, chapterIndex: 0, genre });
   const openingBest = evaluateBestsellerChapter({ content: opening, chapterIndex: 0, genre });
-  const reader = simulateReaderEmotion({ content, chapterIndex: 0, config: { genre, language: input.language || "English" } as any });
+  const reader = simulateReaderEmotion({
+    content,
+    chapterIndex: 0,
+    config: {
+      genre: normalizeGenre(genre),
+      language: normalizeLanguage(input.language || "English"),
+    },
+  });
 
   const hookStrength = Math.round((openingBest.scores.hookStrength * 0.6 + openingEditorial.subtextScore * 0.4));
   const bookTokPotential = BOOKTOK_GENRES.test(genre)

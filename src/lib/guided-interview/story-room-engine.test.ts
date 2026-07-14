@@ -61,7 +61,7 @@ describe("story room engine", () => {
       characters: [
         {
           id: "p1",
-          role: "protagonist",
+          role: "protagonist" as const,
           name: "Elena",
           wound: "Abbandono del padre",
           fear: "La verità",
@@ -92,7 +92,7 @@ describe("story room engine", () => {
       characters: [
         {
           id: "p1",
-          role: "protagonist",
+          role: "protagonist" as const,
           name: "Lucia",
           wound: "Ferita profonda",
           fear: "Perdere controllo",
@@ -104,7 +104,7 @@ describe("story room engine", () => {
         },
         {
           id: "a1",
-          role: "antagonist",
+          role: "antagonist" as const,
           name: "Damien",
           wound: "Ossessione",
           desire: "Possederla",
@@ -136,7 +136,7 @@ describe("story room engine", () => {
       characters: [
         {
           id: "p1",
-          role: "protagonist",
+          role: "protagonist" as const,
           name: "Elena",
           wound: "Abbandono",
           fear: "Verità",
@@ -148,7 +148,7 @@ describe("story room engine", () => {
         },
         {
           id: "a1",
-          role: "antagonist",
+          role: "antagonist" as const,
           name: "Marco",
           wound: "Colpa",
           desire: "Proteggere il segreto",

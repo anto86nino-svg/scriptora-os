@@ -5,6 +5,7 @@ import {
   buildBlueprintPreviewProject,
   canGenerateBlueprintPreview,
   filterProjectsByLibraryTab,
+  getProjectsUsingFreeBookSlot,
   getProjectHumanStatus,
   selectContinuityProject,
   summarizeProjectLibrary,
@@ -77,6 +78,31 @@ describe("project continuity", () => {
     expect(preview.id).toBe("project-blueprint-preview-1");
     expect((preview as any).scriptoraProjectMeta.blueprintPreview).toBe(true);
     expect((preview as any).writingUnlockStatus).toBe("locked");
+  });
+
+  it("does not count the matching Blueprint Preview as a second Free book during upgrade", () => {
+    const preview = buildBlueprintPreviewProject({
+      config: config("Preview da approvare"),
+      blueprint: blueprint(),
+      projectId: "preview-to-upgrade",
+      planId: "free",
+    });
+    const anotherProject = buildBlueprintPreviewProject({
+      config: config("Altro progetto"),
+      blueprint: blueprint(),
+      projectId: "another-project",
+      planId: "free",
+    });
+
+    expect(getProjectsUsingFreeBookSlot([preview], preview.id)).toEqual([]);
+    expect(getProjectsUsingFreeBookSlot([preview, anotherProject], preview.id)).toEqual([anotherProject]);
+
+    const approvedWithSameId = {
+      ...preview,
+      blueprintApproved: true,
+      scriptoraProjectMeta: { blueprintPreview: true },
+    } as BookProject;
+    expect(getProjectsUsingFreeBookSlot([approvedWithSameId], preview.id)).toEqual([approvedWithSameId]);
   });
 
   it("selects a real active project even when the saved last id is missing", () => {

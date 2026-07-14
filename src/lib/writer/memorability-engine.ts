@@ -9,7 +9,7 @@ export interface MemorabilityContext {
   bookTitle?: string;
   chapterTitle?: string;
   chapterIndex?: number;
-  config?: Partial<BookConfig> & Record<string, unknown>;
+  config?: Partial<BookConfig>;
   subchapters?: Array<{ title?: string; content?: string }>;
 }
 
@@ -336,7 +336,7 @@ function countSubchaptersWithContent(context: MemorabilityContext): number {
   return (context.subchapters || []).filter((s) => String(s.content || "").trim()).length;
 }
 
-function resolveExpectedSubchapters(config: Partial<BookConfig> & Record<string, unknown>): number {
+function resolveExpectedSubchapters(config: Partial<BookConfig>): number {
   const explicit = Number(config.subchaptersPerChapter);
   if (explicit > 0) return explicit;
   const chapters = Number(config.numberOfChapters) > 0 ? Number(config.numberOfChapters) : 12;
@@ -390,7 +390,12 @@ function resolveNarrativeContinuityScore(context: MemorabilityContext): {
   score: number;
   problems: string[];
 } {
-  const subs = (context.subchapters || []).filter((s) => String(s.content || "").trim());
+  const subs = (context.subchapters || [])
+    .filter((subchapter) => String(subchapter.content || "").trim())
+    .map((subchapter) => ({
+      title: String(subchapter.title || ""),
+      content: String(subchapter.content || ""),
+    }));
   if (subs.length < 2) {
     return { score: subs.length ? 90 : 70, problems: [] };
   }

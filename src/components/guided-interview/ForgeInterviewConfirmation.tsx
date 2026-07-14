@@ -110,8 +110,8 @@ export function ForgeInterviewConfirmation({
               key={field.label}
               label={field.label}
               value={field.value}
-              muted={"isFallback" in field && field.isFallback}
-              missing={"isMissing" in field && field.isMissing}
+              muted={"isFallback" in field && field.isFallback === true}
+              missing={"isMissing" in field && field.isMissing === true}
             />
           ))}
         </dl>

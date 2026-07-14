@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo, lazy, Suspense, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { NavigationTree } from "@/components/NavigationTree";
 import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { ProgressTracker } from "@/components/ProgressTracker";
-import { GuidedProjectFlow } from "@/components/GuidedProjectFlow";
 import { useBookEngine } from "@/hooks/useBookEngine";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { deleteProject as removeProject, getLastProjectId } from "@/lib/storage";
@@ -19,7 +18,7 @@ import {
   downloadPdfFile,
 } from "@/lib/export-runtime";
 import { ExportBlockedError, getExportBlockers } from "@/lib/export-readiness";
-import { computeProjectProgressPercent } from "@/lib/project-progress";
+import { isProjectComplete } from "@/lib/project-status";
 import { BookTypeBadge } from "@/components/BookTypeBadge";
 import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 import { applyAuthorIdentityToConfig } from "@/lib/author-identity";
@@ -45,11 +44,12 @@ import { MobileVoiceStudioScreen } from "@/mobile/MobileVoiceStudioScreen";
 import { restoreWriterScrollPosition, saveWriterScrollPosition } from "@/mobile/clearProjectSession";
 import { openMobileMarketFromWriter } from "@/mobile/mobileMarketContext";
 import type { RewriteLevel } from "@/lib/generation-types";
-import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { applyScriptoraFreeWatermarkToProject } from "@/lib/brand/scriptoraBrand";
 import { getUserFriendlyError } from "@/lib/user-friendly-error";
+import { setUiMode } from "@/lib/feature-flags/romanziere-mode";
+import { consumeNewBookHandoff, NEW_BOOK_HANDOFF_STORAGE_KEY } from "@/lib/one-flow/new-book-handoff";
 
 const VoiceStudioDialog = lazy(() =>
   import("@/components/VoiceStudioDialog").then((m) => ({ default: m.VoiceStudioDialog })),
@@ -71,6 +71,9 @@ const SettingsPanel = lazyWithRetry(() =>
 );
 const AICoachPanel = lazyWithRetry(() =>
   import("@/components/AICoachPanel").then((m) => ({ default: m.AICoachPanel })),
+);
+const RomanziereModePage = lazyWithRetry(() =>
+  import("@/features/romanziere/pages/RomanziereModePage"),
 );
 const DominationTray = lazyWithRetry(() =>
   import("@/components/DominationTray").then((m) => ({ default: m.DominationTray })),
@@ -169,6 +172,8 @@ function getWriterHeaderContext(
 const Index = () => {
   useUILanguage();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const romanziereMode = searchParams.get("mode") === "romanziere";
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [showCover, setShowCover] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
@@ -178,10 +183,6 @@ const Index = () => {
   const [showVoiceStudio, setShowVoiceStudio] = useState(false);
   const [voiceStudioChapterIndex, setVoiceStudioChapterIndex] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
-  const [guidedFlowEnabled, setGuidedFlowEnabled] = useState<boolean>(() => {
-    const saved = localStorage.getItem("scriptora-guided-flow");
-    return saved !== "off";
-  });
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
     const saved = localStorage.getItem("scriptora-sidebar-open");
     return saved ? JSON.parse(saved) : false;
@@ -200,7 +201,7 @@ const Index = () => {
   const openedFromDashboard =
     sessionStorage.getItem("scriptora-open-from-dashboard") === "1";
   const [upgradeReason, setUpgradeReason] = useState<null | "export" | "token-limit" | "dominate" | "books-limit">(null);
-  const { syncStatus, markSaving, markSaved, markPending, markOffline } = useSyncStatus();
+  const { markSaving, markSaved, markPending, markOffline } = useSyncStatus();
   const engine = useBookEngine({
     onSaving: markSaving,
     onSaved: markSaved,
@@ -353,10 +354,6 @@ const Index = () => {
   }, [sidebarOpen]);
 
   useEffect(() => {
-    localStorage.setItem("scriptora-guided-flow", guidedFlowEnabled ? "on" : "off");
-  }, [guidedFlowEnabled]);
-
-  useEffect(() => {
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<{ focusSection?: SectionId }>).detail;
       if (detail?.focusSection) setActiveSection(detail.focusSection);
@@ -446,27 +443,24 @@ const Index = () => {
         }
       }
 
-      const newBookJson = sessionStorage.getItem("scriptora-new-book");
-      if (newBookJson) {
-        sessionStorage.removeItem("scriptora-new-book");
+      if (sessionStorage.getItem(NEW_BOOK_HANDOFF_STORAGE_KEY)) {
         try {
-          const payload = JSON.parse(newBookJson);
-          if (payload?.mode === "studio-approved" && payload.config && payload.blueprint) {
-            void engine.createProjectWithApprovedBlueprint(payload.config, payload.blueprint, payload.blueprintSource || "ai", payload.projectId);
+          const handoff = await consumeNewBookHandoff(sessionStorage, engine);
+          const createdProject = handoff.project;
+          if (handoff.handled && createdProject) {
             setActiveSection("blueprint");
-          } else if (payload?.mode === "studio-draft" && payload.config) {
-            void engine.createProjectDraft(payload.config);
-            setActiveSection("blueprint");
-          } else if (payload?.config) {
-            void engine.startNewBook(payload.config);
-            setActiveSection("blueprint");
-          } else {
-            void engine.startNewBook(payload);
-            setActiveSection("blueprint");
+            setProjects((current) => [
+              createdProject,
+              ...current.filter((project) => project.id !== createdProject.id),
+            ]);
+            return;
           }
-          setTimeout(refreshProjects, 500);
-          return;
-        } catch { /* ignore */ }
+        } catch (error) {
+          toast.error(getUserFriendlyError(error, {
+            area: "generic",
+            fallback: "Non sono riuscito ad aprire il nuovo libro. I dati sono al sicuro: ricarica la pagina per riprovare.",
+          }));
+        }
       }
 
       const lastId = getLastProjectId();
@@ -632,6 +626,52 @@ const Index = () => {
     // SettingsPanel calls this after saving; useUILanguage handles the rerender.
   };
 
+  const openRomanziereMode = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.set("mode", "romanziere");
+    setUiMode("romanziere");
+    setWriterMenuOpen(false);
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const closeRomanziereMode = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("mode");
+    setUiMode("standard");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (romanziereMode) setUiMode("romanziere");
+  }, [romanziereMode]);
+
+  if (romanziereMode) {
+    return (
+      <Suspense
+        fallback={(
+          <ScriptoraAliveTransition
+            overlay
+            tone="writer"
+            title="Sto aprendo il tuo libro…"
+            steps={["Rilegatura in preparazione…", "Sto disponendo le pagine…", "La piuma è pronta…"]}
+          />
+        )}
+      >
+        <RomanziereModePage
+          project={engine.project}
+          activeChapterIndex={activeChapterIndex}
+          generatingSet={engine.generatingSet}
+          chunkProgress={engine.chunkProgress}
+          onSelectChapter={handleSelectChapter}
+          onGenerateChapter={engine.generateSingleChapter}
+          onCancelGeneration={engine.cancelGeneration}
+          onExit={closeRomanziereMode}
+          onDashboard={() => navigate("/dashboard")}
+        />
+      </Suspense>
+    );
+  }
+
   if (focusMode && engine.project) {
     return (
       <div className="scriptora-ios-screen scriptora-app-surface scriptora-literary-shell flex min-h-[100dvh] flex-col overflow-x-hidden">
@@ -642,7 +682,7 @@ const Index = () => {
             <Minimize2 className="h-3.5 w-3.5" /> {t("exit_focus")}
           </button>
         </div>
-        <div className="min-h-0 flex-1 px-3 pb-safe">
+        <div className="flex min-h-0 flex-1 flex-col px-3 pb-safe">
           <Suspense fallback={<PanelFallback />}>
           <EditorPanel
             project={engine.project}
@@ -668,6 +708,8 @@ const Index = () => {
             onUpdateBlueprintField={engine.updateBlueprintField}
             onUpdateBlueprintOutlineTitle={engine.updateBlueprintOutlineTitle}
             onUpdateBlueprintOutlineSummary={engine.updateBlueprintOutlineSummary}
+            onUpdateBlueprintSubchapterTitle={engine.updateBlueprintSubchapterTitle}
+            onUpdateBlueprintSubchapterSummary={engine.updateBlueprintSubchapterSummary}
             onRegenerateBlueprint={engine.regenerateBlueprint}
             onCreateSafeBlueprint={engine.createSafeBlueprint}
             onApproveBlueprint={engine.approveBlueprint}
@@ -712,16 +754,6 @@ const Index = () => {
             }}
           />
         )}
-        <LazyMollyBrainPanel
-          project={engine.project}
-          activeSection={activeSection}
-          appContext={showVoiceStudio ? "voice" : engine.isAnythingGenerating ? "generating" : "writing"}
-          voiceFeedback={showVoiceStudio ? "artificial_pacing" : undefined}
-          onApplyChapterContent={(chapterIdx, content, subIdx) => {
-            if (subIdx != null) engine.updateSubchapterContent(chapterIdx, subIdx, content);
-            else engine.updateChapterContent(chapterIdx, content);
-          }}
-        />
       </div>
     );
   }
@@ -739,8 +771,6 @@ const Index = () => {
         }}
         className={`scriptora-writer-menu-btn fixed left-2 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] z-50 flex items-center justify-center rounded-[10px] border border-white/10 bg-background/90 p-0 text-foreground shadow-md backdrop-blur-md lg:hidden ${
           mobileOverlayActive ? "hidden" : ""
-        } ${
-          guidedFlowEnabled && !!engine.project?.blueprint && !sidebarOpen ? "scriptora-guide-pulse" : ""
         }`}
         title={sidebarOpen ? t("hide_sidebar") : t("show_sidebar")}
       >
@@ -774,7 +804,7 @@ const Index = () => {
             sessionStorage.removeItem("scriptora-open-from-dashboard");
             window.location.href = "/dashboard";
           }}
-          className="fixed right-3 top-3 z-[60] inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-background/80 px-4 py-2 text-sm font-medium text-white shadow-xl backdrop-blur-xl transition-colors hover:bg-white/10"
+          className="fixed right-3 top-3 z-[60] hidden items-center gap-2 rounded-2xl border border-white/10 bg-background/80 px-4 py-2 text-sm font-medium text-white shadow-xl backdrop-blur-xl transition-colors hover:bg-white/10 lg:inline-flex"
         >
           <ArrowLeft className="h-4 w-4" />
           Torna Dashboard
@@ -928,6 +958,7 @@ const Index = () => {
               isGenerating={writerHeaderContext.isGenerating}
               focusMode={focusMode}
               onFocusMode={() => setFocusMode(true)}
+              onNovelistMode={isChapterView ? openRomanziereMode : undefined}
               onMenuToggle={() => (isMobileLayout ? openMobileWriterMenu() : setWriterMenuOpen((v) => !v))}
               className="rounded-xl border border-white/[0.08] max-lg:ml-11"
             />
@@ -938,6 +969,7 @@ const Index = () => {
                 if (isMobileLayout && engine.project?.id) restoreWriterScrollPosition(engine.project.id);
               }}
               fullscreen={isMobileLayout}
+              busy={engine.isAnythingGenerating}
               onExport={guardedExportEpub}
               onVoice={() => activeChapterIndex != null && openVoiceStudioForChapter(activeChapterIndex)}
               onCleanup={activeChapterGenerated ? () => triggerChapterTool("cleanup") : undefined}
@@ -973,38 +1005,13 @@ const Index = () => {
           />
         )}
 
-        {!isChapterView && activeSection !== "blueprint" && (
-        <GuidedProjectFlow
-          project={engine.project}
-          activeSection={activeSection}
-          sidebarOpen={sidebarOpen}
-          enabled={guidedFlowEnabled}
-          onEnabledChange={setGuidedFlowEnabled}
-          onOpenSidebar={() => {
-            if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
-              openMobileNavExclusive();
-            } else {
-              setSidebarOpen(true);
-            }
-          }}
-          onSelectSection={handleSelectSection}
-          syncStatus={syncStatus}
-          authorPenName={engine.project?.config.authorName || engine.project?.config.author}
-          progressPercent={
-            engine.project ? computeProjectProgressPercent(engine.project) : 0
-          }
-          onCover={() => setShowCover(true)}
-          onExport={guardedExportEpub}
-        />
-        )}
-
         <div className={cn(
           "scriptora-writer-editor-card flex min-h-[320px] min-w-0 flex-1 flex-col overflow-x-clip max-md:overflow-y-visible md:min-h-0 md:overflow-hidden max-md:rounded-xl max-md:border-x-0 lg:border-0 lg:bg-transparent lg:shadow-none",
           isChapterView && isMobileLayout && "scriptora-single-chapter-view",
         )}>
           {engine.project ? (
             <>
-              <div className="min-h-0 min-w-0 flex-1">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                 <Suspense fallback={<PanelFallback />}>
                 <EditorPanel
                   project={engine.project}
@@ -1030,6 +1037,8 @@ const Index = () => {
                   onUpdateBlueprintField={engine.updateBlueprintField}
                   onUpdateBlueprintOutlineTitle={engine.updateBlueprintOutlineTitle}
                   onUpdateBlueprintOutlineSummary={engine.updateBlueprintOutlineSummary}
+                  onUpdateBlueprintSubchapterTitle={engine.updateBlueprintSubchapterTitle}
+                  onUpdateBlueprintSubchapterSummary={engine.updateBlueprintSubchapterSummary}
                   onRegenerateBlueprint={engine.regenerateBlueprint}
                   onCreateSafeBlueprint={engine.createSafeBlueprint}
                   onAutoCompleteBlueprintConfig={engine.autoCompleteBlueprintConfig}
@@ -1044,12 +1053,8 @@ const Index = () => {
                   chapterToolRequest={chapterToolRequest}
                   onSelectChapter={handleSelectChapter}
                   onCover={() => setShowCover(true)}
-                  onKdp={() => navigate("/kdp-launch")}
-                  onRadar={() => navigate("/bestseller-radar")}
-                  onKeywordGold={() => navigate("/keyword-gold")}
                   onTitleIntel={() => setShowTitleIntel(true)}
                   onExport={guardedExportEpub}
-                  onMarket={() => navigate("/mobile-market")}
                   coverDataUrl={coverDataUrl ?? null}
                   onRecoverProject={() => void engine.recoverProject?.()}
                   onContinueChapterFromCheckpoint={(index) => void engine.continueChapterFromCheckpoint?.(index)}
@@ -1327,19 +1332,6 @@ const Index = () => {
         }}
       />
       </Suspense>
-      {engine.project && !mobileOverlayActive && (
-        <LazyMollyBrainPanel
-          project={engine.project}
-          activeSection={activeSection}
-          appContext={showVoiceStudio ? "voice" : engine.isAnythingGenerating ? "generating" : "writing"}
-          voiceFeedback={showVoiceStudio ? "artificial_pacing" : undefined}
-          onApplyChapterContent={(chapterIdx, content, subIdx) => {
-            if (subIdx != null) engine.updateSubchapterContent(chapterIdx, subIdx, content);
-            else engine.updateChapterContent(chapterIdx, content);
-          }}
-        />
-      )}
-
       <UpgradeModal
         open={!!upgradeReason}
         reason={upgradeReason || "export"}

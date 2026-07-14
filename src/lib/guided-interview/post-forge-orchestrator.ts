@@ -72,7 +72,8 @@ export function verifyCanonBeforeChapter(input: {
     characterStates: input.project.longBookMemory?.characterStates,
   });
 
-  if ((snapshot.openPromises?.length ?? 0) > 8) {
+  const openPromises = snapshot.storyPromises.filter((promise) => promise.status === "open");
+  if (openPromises.length > 8) {
     issues.push("Troppe promesse narrative aperte — rischio di deriva.");
   }
 
@@ -132,8 +133,8 @@ export function runNarrativeDirectorAnalysis(
   config: Pick<BookConfig, "genre" | "language">,
 ): string[] {
   const family = /self-help|business|manual|saggio|nonfiction/i.test(String(config.genre))
-    ? "nonfiction"
-    : "fiction";
+    ? "nonfiction" as const
+    : "narrative" as const;
   const result = runNarrativeIntelligenceDirector(text, { family, genre: config.genre });
   const notes = result.signals.map((signal) => signal.message);
 
@@ -297,7 +298,11 @@ export function runPostForgeManuscriptAnalysis(input: {
 
 export function buildForgeSeedFromProject(project: BookProject): ReturnType<typeof buildForgeInterviewSeed> | null {
   if (!project.config.characterBibleText && !project.config.forgeCanonBrief) return null;
-  const pseudoState = {
+  const pseudoState: GuidedInterviewState = {
+    completed: false,
+    currentStep: 0,
+    confidence: 0,
+    messages: [],
     extracted: {
       promise: project.config.idea,
       genre: project.config.genre,
@@ -317,6 +322,6 @@ export function buildForgeSeedFromProject(project: BookProject): ReturnType<type
       personality: character.personality,
     })),
     canonLocked: Boolean(project.config.forgeCanonBrief),
-  } as GuidedInterviewState;
+  };
   return buildForgeInterviewSeed(pseudoState);
 }

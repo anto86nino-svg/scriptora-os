@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, GraduationCap, PenLine, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, PenLine, Sparkles } from "lucide-react";
 import type { UILanguage } from "@/lib/i18n";
 
 type Props = {
@@ -8,32 +8,32 @@ type Props = {
 
 const copy = {
   it: {
-    label: "Due percorsi · una piattaforma",
-    title: "Non solo scrittura. Anche studio.",
-    subtitle: "Scriptora OS unisce Author Studio e Study OS: libri da idea a pubblicazione, materiale da lezione a quiz e ripasso.",
-    writeTitle: "Scrivere libri",
-    writeText: "Blueprint, capitoli, diagnosi editoriale, cover, KDP Launch, Radar ed export.",
+    label: "Un percorso completo · una piattaforma",
+    title: "Dall'idea al libro pubblicato.",
+    subtitle: "Scriptora OS accompagna l'autore dalla prima idea al manoscritto, fino alla copertina e ai file pronti per la pubblicazione.",
+    writeTitle: "Progetta il libro",
+    writeText: "Idea, lettore, promessa, blueprint, personaggi e canone in un progetto coerente.",
     writeCta: "Crea il tuo libro",
-    writeTags: ["Romanzi", "Saggistica", "KDP", "Self-publishing"],
-    studyTitle: "Studiare meglio",
-    studyText: "PDF, dispense, appunti e capitoli → riassunti, flashcard, quiz e simulazioni.",
-    studyCta: "Apri Study OS",
-    studyTags: ["Università", "Liceo", "Medicina", "Giurisprudenza", "STEM"],
-    foot: "Autori e studenti nello stesso ecosistema creativo.",
+    writeTags: ["Romanzi", "Saggistica", "Blueprint", "Canone"],
+    publishTitle: "Scrivi e pubblica",
+    publishText: "Capitoli con memoria, diagnosi editoriale, cover, KDP Launch ed export.",
+    publishCta: "Apri lo studio autore",
+    publishTags: ["Writer", "Cover", "KDP", "Self-publishing"],
+    foot: "Tutto il ciclo editoriale in un unico ecosistema autore.",
   },
   en: {
-    label: "Two paths · one platform",
-    title: "Not just writing. Study too.",
-    subtitle: "Scriptora OS combines Author Studio and Study OS: books from idea to publish, coursework to quizzes and review.",
-    writeTitle: "Write books",
-    writeText: "Blueprint, chapters, editorial diagnosis, cover, KDP Launch, Radar and export.",
+    label: "One complete path · one platform",
+    title: "From first idea to published book.",
+    subtitle: "Scriptora OS guides authors from the initial idea to the manuscript, cover and publication-ready files.",
+    writeTitle: "Design the book",
+    writeText: "Idea, reader, promise, blueprint, characters and canon in one coherent project.",
     writeCta: "Start your book",
-    writeTags: ["Fiction", "Non-fiction", "KDP", "Self-publishing"],
-    studyTitle: "Study smarter",
-    studyText: "PDFs, notes and chapters → summaries, flashcards, quizzes and practice.",
-    studyCta: "Open Study OS",
-    studyTags: ["University", "High school", "Medicine", "Law", "STEM"],
-    foot: "Authors and students in the same creative ecosystem.",
+    writeTags: ["Fiction", "Non-fiction", "Blueprint", "Canon"],
+    publishTitle: "Write and publish",
+    publishText: "Chapters with memory, editorial diagnosis, cover, KDP Launch and export.",
+    publishCta: "Open Author Studio",
+    publishTags: ["Writer", "Cover", "KDP", "Self-publishing"],
+    foot: "The complete editorial cycle in one author ecosystem.",
   },
 } as const;
 
@@ -73,22 +73,22 @@ export function PublicDualPath({ lang, onEnter }: Props) {
           </button>
         </article>
 
-        <article className="scriptora-dual-path-card is-study">
-          <div className="scriptora-dual-path-icon is-study">
-            <GraduationCap className="h-5 w-5" />
+        <article className="scriptora-dual-path-card">
+          <div className="scriptora-dual-path-icon">
+            <BookOpen className="h-5 w-5" />
           </div>
           <div className="scriptora-dual-path-card-head">
             <Sparkles className="h-4 w-4 text-emerald-200/80" />
-            <h3>{c.studyTitle}</h3>
+            <h3>{c.publishTitle}</h3>
           </div>
-          <p>{c.studyText}</p>
+          <p>{c.publishText}</p>
           <div className="scriptora-dual-path-tags">
-            {c.studyTags.map((tag) => (
+            {c.publishTags.map((tag) => (
               <span key={tag}>{tag}</span>
             ))}
           </div>
-          <button type="button" onClick={onEnter} className="scriptora-dual-path-cta is-study">
-            {c.studyCta}
+          <button type="button" onClick={onEnter} className="scriptora-dual-path-cta">
+            {c.publishCta}
             <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </article>

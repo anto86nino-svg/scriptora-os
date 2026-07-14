@@ -111,6 +111,51 @@ export function loadForgeInterviewDraft(): ForgeInterviewDraft | null {
   }
 }
 
+function premiseTokens(value: string): Set<string> {
+  return new Set(
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]+/g, " ")
+      .split(/\s+/)
+      .filter((token) => token.length >= 4),
+  );
+}
+
+/** Prevents a new book from inheriting a months-old interview just because the genre matches. */
+export function isForgeDraftCompatibleWithIdea(
+  draft: ForgeInterviewDraft,
+  currentIdea?: string,
+): boolean {
+  const current = String(currentIdea || "").trim();
+  if (!current) return true;
+  const extracted = draft.state.extracted ?? {};
+  const draftIdea = String(
+    extracted.rawIdea
+      || extracted.editorialSynopsis
+      || extracted.readerTransformation
+      || draft.state.messages.find((message) => message.role === "user")?.content
+      || "",
+  ).trim();
+  if (!draftIdea) return false;
+
+  const normalizedCurrent = current.toLowerCase();
+  const normalizedDraft = draftIdea.toLowerCase();
+  if (normalizedCurrent.includes(normalizedDraft) || normalizedDraft.includes(normalizedCurrent)) {
+    return true;
+  }
+
+  const currentTokens = premiseTokens(current);
+  const draftTokens = premiseTokens(draftIdea);
+  if (!currentTokens.size || !draftTokens.size) return false;
+  let overlap = 0;
+  currentTokens.forEach((token) => {
+    if (draftTokens.has(token)) overlap += 1;
+  });
+  return overlap / Math.min(currentTokens.size, draftTokens.size) >= 0.5;
+}
+
 export function clearForgeInterviewDraft(): void {
   if (typeof window === "undefined") return;
   try {

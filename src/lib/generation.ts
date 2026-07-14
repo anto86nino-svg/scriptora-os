@@ -2,6 +2,10 @@ import { BookConfig, Chapter, FrontMatter, BackMatter, BookBlueprint, BookProjec
 import type { ChunkProgress, RewriteLevel } from "@/lib/generation-types";
 export type { ChunkProgress, RewriteLevel } from "@/lib/generation-types";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchWithGenerationAuth,
+  GenerationAuthError,
+} from "@/lib/generation-auth";
 import { scriptoraLog, logGenerationStart, logGenerationEnd, logEdgeError } from "@/lib/scriptora-logger";
 import { buildGenreSystemBlock, buildGenreBlueprintBlock, buildGenreEditorialBlock, getGenreBlueprint, buildPromptByGenre, resolveGenreKey } from "@/lib/genre-intelligence";
 import { buildBookTypeEngineBlock, buildBookTypeLock, resolveBookTypeDefinition } from "@/lib/book-type-engine";
@@ -516,32 +520,57 @@ async function callAIOnce(
   }, 15000);
 
   try {
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-book`;
-    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+    const supabasePublicKey = getSupabasePublicKey();
+    const url = `${supabaseUrl}/functions/v1/generate-book`;
+    if (!supabaseUrl || !supabasePublicKey) {
       throw new Error("Missing Supabase configuration for AI generation.");
     }
     streamAuditLog("frontend_fetch_start", { timeoutMs }, usage);
     const currentUsage = usagePayload(usage);
-    const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: { session: null } } as any));
-    const bearer = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    const jwtKind = bearer === import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ? "anon" : "user";
-    logGenerationStart("GENERATION", "callAIOnce", {
-      jwtPresent: jwtKind === "user",
-      userId: sessionData?.session?.user?.id ?? null,
-      taskType: usage?.taskType,
-      projectId: usage?.projectId,
-    });
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        "Authorization": `Bearer ${bearer}`,
-        ...getBillingSimulationHeaders(),
-      },
-      body: JSON.stringify(withBillingSimulationBody({ systemPrompt, userPrompt, ...currentUsage })),
-      signal: controller.signal,
-    });
+    const requestBody = JSON.stringify(withBillingSimulationBody({ systemPrompt, userPrompt, ...currentUsage }));
+    let startLogged = false;
+    let res: Response;
+    try {
+      const authenticated = await fetchWithGenerationAuth(
+        supabase.auth,
+        (session, authAttempt) => {
+          if (!startLogged) {
+            logGenerationStart("GENERATION", "callAIOnce", {
+              jwtPresent: true,
+              userId: session.userId,
+              taskType: usage?.taskType,
+              projectId: usage?.projectId,
+            });
+            startLogged = true;
+          }
+          streamAuditLog("frontend_authenticated_fetch", { authAttempt }, usage);
+          return fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": supabasePublicKey,
+              "Authorization": `Bearer ${session.accessToken}`,
+              ...getBillingSimulationHeaders(),
+            },
+            body: requestBody,
+            signal: controller.signal,
+          });
+        },
+      );
+      res = authenticated.response;
+    } catch (error) {
+      if (error instanceof GenerationAuthError) {
+        logEdgeError("GENERATION", "generate-book", {
+          status: error.status,
+          body: error.message,
+          jwtKind: "user",
+          taskType: usage?.taskType,
+          projectId: usage?.projectId,
+        });
+      }
+      throw error;
+    }
 
     const contentType = res.headers.get("content-type") || "";
     streamAuditLog("frontend_response", { status: res.status, ok: res.ok, contentType }, usage);
@@ -552,12 +581,12 @@ async function callAIOnce(
       logEdgeError("GENERATION", "generate-book", {
         status: res.status,
         body: errMsg,
-        jwtKind,
+        jwtKind: "user",
         taskType: usage?.taskType,
         projectId: usage?.projectId,
       });
       if (res.status === 401) {
-        throw new Error("Sessione utente non valida. Effettua nuovamente il login.");
+        throw new GenerationAuthError();
       }
       if (errMsg.includes("credits exhausted") || errMsg.includes("API key invalid") || res.status === 402) {
         throw new AICreditsError(errMsg);
@@ -658,7 +687,7 @@ async function callAI(systemPrompt: string, userPrompt: string, usage?: AIUsageC
       baseDelayMs: 2000,
       maxDelayMs: 12000,
       serviceKey: "deepseek",
-      shouldRetry: (err) => !(err instanceof AICreditsError),
+      shouldRetry: (err) => !(err instanceof AICreditsError) && !(err instanceof GenerationAuthError),
     },
   );
 }
@@ -701,60 +730,75 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
         projectId: usage?.projectId,
         taskType: usage?.taskType || "generate_blueprint",
       });
-      await supabase.auth.refreshSession().catch((err) => {
-        blueprintDebug("BLUEPRINT_RETRY", {
-          attempt: attemptNumber,
-          refreshSession: "failed",
-          error: err instanceof Error ? err.message : String(err),
-        });
-      });
     }
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 90_000);
-    // Resolve bearer: prefer the authenticated user JWT (same strategy as callAIOnce).
-    // Falls back to anon key only when there is genuinely no session.
-    const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: { session: null } } as any));
-    const bearer = sessionData?.session?.access_token || supabasePublicKey;
-    const jwtKind = bearer === supabasePublicKey ? "anon" : "user";
-    blueprintDebug("BLUEPRINT_START", {
-      attempt: attemptNumber,
-      endpoint: url,
-      jwtKind,
-      hasSession: Boolean(sessionData?.session),
-      userId: sessionData?.session?.user?.id ?? null,
-      projectId: usage?.projectId,
-    });
-    logGenerationStart("BLUEPRINT", "callBlueprintFast", {
-      jwtPresent: jwtKind === "user",
-      userId: sessionData?.session?.user?.id ?? null,
-      taskType: usage?.taskType,
-      projectId: usage?.projectId,
-    });
+    const requestBody = JSON.stringify(withBillingSimulationBody({
+      systemPrompt,
+      userPrompt,
+      ...usagePayload({ ...usage, taskType: usage?.taskType || "generate_blueprint" }),
+    }));
+    let startLogged = false;
     let res: Response;
     try {
-      blueprintDebug("BLUEPRINT_REQUEST", {
-        attempt: attemptNumber,
-        taskType: usage?.taskType || "generate_blueprint",
-        projectId: usage?.projectId,
-      });
-      res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${bearer}`,
-          apikey: supabasePublicKey,
-          ...getBillingSimulationHeaders(),
+      const authenticated = await fetchWithGenerationAuth(
+        supabase.auth,
+        (session, authAttempt) => {
+          if (!startLogged) {
+            blueprintDebug("BLUEPRINT_START", {
+              attempt: attemptNumber,
+              endpoint: url,
+              jwtKind: "user",
+              hasSession: true,
+              userId: session.userId,
+              projectId: usage?.projectId,
+            });
+            logGenerationStart("BLUEPRINT", "callBlueprintFast", {
+              jwtPresent: true,
+              userId: session.userId,
+              taskType: usage?.taskType,
+              projectId: usage?.projectId,
+            });
+            startLogged = true;
+          }
+          blueprintDebug("BLUEPRINT_REQUEST", {
+            attempt: attemptNumber,
+            authAttempt,
+            taskType: usage?.taskType || "generate_blueprint",
+            projectId: usage?.projectId,
+          });
+          return fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.accessToken}`,
+              apikey: supabasePublicKey,
+              ...getBillingSimulationHeaders(),
+            },
+            body: requestBody,
+            signal: controller.signal,
+          });
         },
-        body: JSON.stringify(withBillingSimulationBody({
-          systemPrompt,
-          userPrompt,
-          ...usagePayload({ ...usage, taskType: usage?.taskType || "generate_blueprint" }),
-        })),
-        signal: controller.signal,
-      });
+      );
+      res = authenticated.response;
     } catch (err: any) {
       clearTimeout(timeout);
+      if (err instanceof GenerationAuthError) {
+        blueprintDebug("BLUEPRINT_ERROR", {
+          attempt: attemptNumber,
+          reason: "invalid_session",
+          taskType: usage?.taskType,
+        });
+        logEdgeError("BLUEPRINT", "generate-blueprint-fast", {
+          status: err.status,
+          body: err.message,
+          jwtKind: "user",
+          taskType: usage?.taskType,
+          projectId: usage?.projectId,
+        });
+        throw err;
+      }
       if (err?.name === "AbortError") {
         blueprintDebug("BLUEPRINT_ERROR", {
           attempt: attemptNumber,
@@ -787,7 +831,7 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
       ok: res.ok,
       contentType: res.headers.get("content-type") || "",
     });
-    scriptoraLog.info("BLUEPRINT", `Blueprint response: ${res.status}`, { jwtKind, taskType: usage?.taskType });
+    scriptoraLog.info("BLUEPRINT", `Blueprint response: ${res.status}`, { jwtKind: "user", taskType: usage?.taskType });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       let errMsg = text;
@@ -795,12 +839,12 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
       logEdgeError("BLUEPRINT", "generate-blueprint-fast", {
         status: res.status,
         body: errMsg,
-        jwtKind,
+        jwtKind: "user",
         taskType: usage?.taskType,
         projectId: usage?.projectId,
       });
       if (res.status === 401) {
-        throw new Error("Sessione utente non valida. Effettua nuovamente il login.");
+        throw new GenerationAuthError();
       }
       if (res.status === 402) throw new AICreditsError(errMsg || "AI credits exhausted");
       throw new Error(errMsg || `Blueprint generation failed (${res.status})`);
@@ -837,14 +881,16 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
     baseDelayMs: 1500,
     maxDelayMs: 4000,
     serviceKey: "deepseek-blueprint",
-    shouldRetry: (err) => !(err instanceof AICreditsError),
+    shouldRetry: (err) => !(err instanceof AICreditsError) && !(err instanceof GenerationAuthError),
     onAttempt: (attempt, err) => {
       if (err) {
         blueprintDebug("BLUEPRINT_RETRY", {
           attempt,
           failed: true,
           error: err.message,
-          willRetry: attempt < 3 && !(err instanceof AICreditsError),
+          willRetry: attempt < 3
+            && !(err instanceof AICreditsError)
+            && !(err instanceof GenerationAuthError),
         });
       }
     },
@@ -2467,7 +2513,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
           baseDelayMs: 1500,
           maxDelayMs: 6000,
           serviceKey: "deepseek-chunk",
-          shouldRetry: (err) => !(err instanceof AICreditsError),
+          shouldRetry: (err) => !(err instanceof AICreditsError) && !(err instanceof GenerationAuthError),
         },
       );
       consecutiveFailures = 0; // Reset on success
@@ -2478,7 +2524,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
       console.error(`[Scriptora] Chunk ${chunkIndex + 1} failed (failures=${consecutiveFailures}):`, lastChunkError);
 
       // Credit/auth errors = bail immediately
-      if (e instanceof AICreditsError) throw e;
+      if (e instanceof AICreditsError || e instanceof GenerationAuthError) throw e;
 
       // After 6 consecutive failures, try emergency fallback or stop gracefully
       if (consecutiveFailures > 6) {
@@ -2991,14 +3037,14 @@ Return a JSON object with:
   }
   const primary = resolveBlueprintFromAiResponse(rawPrimary, config);
 
-  if (primary.ok) {
+  if (primary.ok === true) {
     return finalizeBlueprint(primary.blueprint, primary.source);
   }
 
   const corrective = buildBlueprintCorrectivePrompt(config, primary.errors);
   const rawRetry = await attempt(`${prompt}\n\n${corrective}`);
   const retry = resolveBlueprintFromAiResponse(rawRetry, config);
-  if (retry.ok) {
+  if (retry.ok === true) {
     return finalizeBlueprint(retry.blueprint, retry.source);
   }
 

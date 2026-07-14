@@ -7,12 +7,13 @@ import {
   resolveActiveInterviewQuestion,
   resumeInterview,
 } from "@/lib/guided-interview/question-engine";
-import { FORGE_OPENING_QUESTION_ID, isFirstForgeAssistantMessage } from "@/lib/guided-interview/opening-experience";
+import { countForgeUserAnswers, FORGE_OPENING_QUESTION_ID, isFirstForgeAssistantMessage } from "@/lib/guided-interview/opening-experience";
 import { getWelcomeInterviewQuestion } from "@/lib/guided-interview/interview-stages";
 import { evaluateForgeReadiness } from "@/lib/guided-interview/forge-readiness";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import {
   clearForgeInterviewDraft,
+  isForgeDraftCompatibleWithIdea,
   loadForgeInterviewDraft,
   saveForgeDnaLock,
   saveForgeInterviewDraft,
@@ -54,6 +55,7 @@ import type { ForgeHostContext } from "@/lib/guided-interview/forge-host-engine"
 
 export type UseGuidedInterviewOptions = {
   selectedGenre?: string;
+  initialIdea?: string;
   language?: string;
   penName?: string;
   authorName?: string;
@@ -69,8 +71,11 @@ export type UseGuidedInterviewOptions = {
   scrollContainerRef?: React.RefObject<HTMLElement | null>;
 };
 
+export const MIN_GUIDED_ANSWERS_BEFORE_FOUNDATION = 6;
+
 export function useGuidedInterviewController({
   selectedGenre,
+  initialIdea,
   language = "Italian",
   penName,
   authorName,
@@ -91,8 +96,18 @@ export function useGuidedInterviewController({
         selectedGenre,
         chatFirst: chatFirst && !selectedGenre,
         hostContext,
+        ...(initialIdea?.trim() ? {
+          extracted: { rawIdea: initialIdea.trim(), readerTransformation: initialIdea.trim() },
+          messages: [{
+              id: "user-initial-premise",
+              role: "user",
+              content: initialIdea.trim(),
+              createdAt: Date.now(),
+            }],
+        } : {}),
       }),
       selectedGenre,
+      initialIdea,
     );
 
   const [state, setState] = useState(buildInitialState);
@@ -131,8 +146,9 @@ export function useGuidedInterviewController({
     setAutoAnswerToneBias(null);
     lastQuestionIdRef.current = null;
     lastQuestionTextRef.current = null;
+    blueprintMessageInjectedRef.current = false;
     autoFoundationAttemptedRef.current = false;
-  }, [selectedGenre, chatFirst, penName, authorName, genderHint]);
+  }, [selectedGenre, initialIdea, chatFirst, penName, authorName, genderHint]);
 
   useEffect(() => {
     saveForgeInterviewDraft(state);
@@ -160,16 +176,22 @@ export function useGuidedInterviewController({
     () => state.bookFoundation ?? buildBookFoundationLock(state),
     [state],
   );
+  const hasEnoughInterviewDepth =
+    countForgeUserAnswers(state) >= MIN_GUIDED_ANSWERS_BEFORE_FOUNDATION || state.forgeMode === "express";
   const blueprintReadyUi =
-    blueprintGate.isBlueprintReady && blueprintGate.shouldStopQuestions;
+    hasEnoughInterviewDepth && blueprintGate.isBlueprintReady && blueprintGate.shouldStopQuestions;
   const foundationReadyUi =
-    blueprintGate.needsFoundationLock && blueprintGate.shouldStopQuestions;
+    hasEnoughInterviewDepth && blueprintGate.needsFoundationLock && blueprintGate.shouldStopQuestions;
   const earlyFoundationFlow =
-    shouldShowFoundationFlow(state) && !state.bookFoundationLocked && state.forgeMode !== "express";
+    hasEnoughInterviewDepth
+    && shouldShowFoundationFlow(state)
+    && !state.bookFoundationLocked
+    && state.forgeMode !== "express";
   const pauseInterviewForFoundation = earlyFoundationFlow && !state.bookFoundationLocked;
-  const ready =
+  const ready = hasEnoughInterviewDepth && (
     (progress.dnaLock.readyForBlueprint && forgeReady.ready && blueprintGate.isBlueprintReady) ||
-    (blueprintGate.isBlueprintReady && blueprintGate.canShowConfirmation);
+    (blueprintGate.isBlueprintReady && blueprintGate.canShowConfirmation)
+  );
 
   useEffect(() => {
     if (blueprintReadyUi) {
@@ -535,6 +557,7 @@ export function useGuidedInterviewController({
             id: `assistant-greatness-gate-${Date.now()}`,
             role: "assistant",
             content: greatnessGate.message,
+            createdAt: Date.now(),
           },
         ],
       }));
@@ -656,9 +679,14 @@ function clean(value: unknown): string {
 function getResumableInterviewState(
   fallback: GuidedInterviewState,
   selectedGenre?: string,
+  initialIdea?: string,
 ): GuidedInterviewState {
   const draft = loadForgeInterviewDraft();
-  if (!draft || !canUseDraftForGenre(draft.state, selectedGenre)) return fallback;
+  if (
+    !draft
+    || !canUseDraftForGenre(draft.state, selectedGenre)
+    || !isForgeDraftCompatibleWithIdea(draft, initialIdea)
+  ) return fallback;
   return addResumeNotice({
     ...draft.state,
     completed: false,

@@ -23,9 +23,13 @@ function sampleProject(): BookProject {
       genre: "thriller",
       language: "Italian",
       tone: "dark",
+      authorStyle: "cinematic",
+      category: "Fiction",
+      subcategory: "Thriller",
       numberOfChapters: 3,
       chapterLength: "medium",
       bookLength: "short",
+      subchaptersEnabled: false,
       matterOptions: {
         frontMatterEnabled: false,
         backMatterEnabled: false,

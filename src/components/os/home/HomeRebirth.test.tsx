@@ -38,7 +38,7 @@ describe("HomeRebirth", () => {
     expect(screen.getAllByText(/crea nuovo libro/i).length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: /i miei libri/i })).toBeTruthy();
     expect(screen.getByRole("heading", { name: /pubblicazione \/ export/i })).toBeTruthy();
-    expect(screen.getByText("Scriptora Study OS")).toBeTruthy();
+    expect(screen.queryByText(/Study OS/i)).toBeNull();
     expect(screen.getByText("KDP Launch")).toBeTruthy();
     expect(screen.getByText("Market OS")).toBeTruthy();
     expect(screen.getByText("Cover Studio")).toBeTruthy();
@@ -64,7 +64,7 @@ describe("HomeRebirth", () => {
     );
 
     const productSection = screen.getByRole("heading", { name: /scegli cosa fare/i }).closest("section");
-    expect(productSection?.innerHTML).toContain("Scriptora Study OS");
+    expect(productSection?.innerHTML).not.toMatch(/Study OS/i);
     expect(productSection?.innerHTML).toContain("grid-cols-1");
   });
 });

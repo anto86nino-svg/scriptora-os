@@ -2,7 +2,7 @@
 
 ## Entrare nel progetto reale
 
-cd ~/Desktop/SCRIPTORA_WORKSPACE/01_LAVORO_scriptora-dev-lab
+cd ~/Developer/'Startap scriptora.ac'
 
 ## Controllare dove sei
 
@@ -12,7 +12,7 @@ git status --short
 
 ## Avviare locale
 
-npm run dev
+./scripts/dev-local.sh
 
 ## Build produzione
 

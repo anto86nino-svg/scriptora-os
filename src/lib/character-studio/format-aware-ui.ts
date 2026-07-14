@@ -1,4 +1,5 @@
 import { resolveUniversalBookStudio, type UniversalBookStudioId } from "@/lib/book-intelligence/universal-book-studios";
+import { normalizeGenre } from "@/lib/book-config-studio/defaults";
 
 export type CharacterStudioFormatMode = "narrative" | "poetry" | "manual" | "workbook" | "study";
 
@@ -42,7 +43,9 @@ export function resolveCharacterStudioFormatUiProfile(input: {
   const { studio } = resolveUniversalBookStudio({
     config: {
       bookFormat: input.bookFormat,
-      genre: input.genre,
+      genre: input.genre
+        ? normalizeGenre(input.genre, `${input.subcategory || ""} ${input.bookFormat || ""}`)
+        : undefined,
       subcategory: input.subcategory,
     },
     explicitBookFormat: input.bookFormat,

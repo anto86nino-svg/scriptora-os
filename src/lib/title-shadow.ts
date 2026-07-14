@@ -9,6 +9,8 @@ export interface ShadowTitleCandidate {
   confidence: number;
 }
 
+type ShadowTitleDraft = Pick<ShadowTitleCandidate, "title" | "subtitle" | "angle">;
+
 export interface ShadowTitleInput {
   title?: string;
   subtitle?: string;
@@ -496,7 +498,7 @@ export function generateShadowTitleSet(input: ShadowTitleInput, limit = 8): Shad
     }));
   }
 
-  const candidates: ShadowTitleCandidate[] = fiction
+  const candidates: ShadowTitleDraft[] = fiction
     ? [
         {
           title: fictionTitles[0],

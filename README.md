@@ -11,10 +11,19 @@
 ## Sviluppo locale
 
 ```bash
-npm install
-cp .env.example .env   # compila le chiavi Supabase
+cd ~/Developer/'Startap scriptora.ac'
+nvm use 22             # oppure usa Node 22 installato con Homebrew
+npm ci
+cp .env.example .env   # solo se .env non esiste; compila le chiavi Supabase
 npm run dev
 ```
+
+Apri il workspace pronto in Visual Studio Code dalla Scrivania con
+`Scriptora.code-workspace`. Il server locale usa
+[http://localhost:8081](http://localhost:8081).
+
+Il progetto di lavoro è intenzionalmente fuori da iCloud Drive: migliaia di
+placeholder cloud rallentavano o bloccavano Vite, Git e Vitest.
 
 ## Qualità
 

@@ -21,7 +21,7 @@ export interface VoiceGuardProfile {
   priority: VoicePriority;
 }
 
-const PROFILES: Record<GenreKey, VoiceGuardProfile> = {
+const PROFILES: Partial<Record<GenreKey, VoiceGuardProfile>> = {
   // FICTION — voice + emotion are sacred
   horror:         { minVoicePreserved: 7, minEmotionalIntensity: 8, minMetaphorPreservation: 6, minAntiGeneric: 7, priority: "emotion" },
   thriller:       { minVoicePreserved: 7, minEmotionalIntensity: 7, minMetaphorPreservation: 5, minAntiGeneric: 7, priority: "emotion" },

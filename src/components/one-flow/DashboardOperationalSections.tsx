@@ -3,7 +3,6 @@ import {
   ArrowRight,
   BookOpen,
   FileDown,
-  GraduationCap,
   ImagePlus,
   Plus,
   Settings,
@@ -35,7 +34,6 @@ type Props = {
   onNewBook: () => void;
   onMyBooks: () => void;
   onOpenCover: () => void;
-  onStudyOs: () => void;
   onCharacterStudio: () => void;
   onOpenAdvancedTools: () => void;
   onOpenSettings: () => void;
@@ -115,7 +113,6 @@ export function DashboardOperationalSections({
   onNewBook,
   onMyBooks,
   onOpenCover,
-  onStudyOs,
   onCharacterStudio,
   onOpenAdvancedTools,
   onOpenSettings,
@@ -168,7 +165,7 @@ export function DashboardOperationalSections({
         </Suspense>
       </div>
 
-      <div className="mb-4 grid gap-3 sm:mb-5 lg:grid-cols-3">
+      <div className="mb-4 grid gap-3 sm:mb-5 sm:grid-cols-2">
         <SectionShell
           kicker="Design"
           title="Copertine"
@@ -185,13 +182,6 @@ export function DashboardOperationalSections({
           <QuickLinkButton icon={FileDown} label="Vai a Export Studio" onClick={onExport} accent="amber" />
         </SectionShell>
 
-        <SectionShell
-          kicker="Formazione"
-          title="Studio e formazione"
-          description="Study OS: riassunti, quiz, flashcard e mappe."
-        >
-          <QuickLinkButton icon={GraduationCap} label="Apri Study OS" onClick={onStudyOs} accent="emerald" />
-        </SectionShell>
       </div>
 
       <div className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">

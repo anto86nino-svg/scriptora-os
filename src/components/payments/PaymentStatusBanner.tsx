@@ -11,7 +11,7 @@ export function PaymentStatusBanner() {
     <div className="mx-auto mb-10 max-w-3xl">
       <BetaAccessNotice
         title="Beta privata · Pagamenti non ancora attivi"
-        message="Checkout Stripe/Lemon predisponibile via env, ma non attivo in questa beta. Nessun addebito viene elaborato: piani autore, crediti extra e Study OS Pro sono pronti per il collegamento reale."
+        message="Checkout Stripe/Lemon predisponibile via env, ma non attivo in questa beta. Nessun addebito viene elaborato: piani autore e crediti extra sono pronti per il collegamento reale."
       />
     </div>
   );

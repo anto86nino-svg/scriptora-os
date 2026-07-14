@@ -1,4 +1,5 @@
 import type { BookConfig } from "@/types/book";
+import { normalizeLanguage } from "@/lib/book-config-studio/defaults";
 import { computePremiumEditorialScores } from "@/lib/editorial-intelligence-premium";
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
 import { getGenreProfile } from "@/lib/genre-intelligence";
@@ -80,7 +81,7 @@ function configFromState(state: GuidedInterviewState): Partial<BookConfig> {
   return {
     genre: (ex.genre ?? state.selectedGenre) as BookConfig["genre"],
     subcategory: ex.subgenre,
-    language: ex.language,
+    language: normalizeLanguage(ex.language),
     idea: ex.promise,
     title: ex.bookTitle ?? state.titleIntelligence?.definitiveTitle,
   };

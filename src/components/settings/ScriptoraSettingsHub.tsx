@@ -11,7 +11,6 @@ import {
   getSettingsSnapshot,
   loadHubPreferences,
   saveHubPreferences,
-  setGuidedFlowEnabled,
   setThemeBackground,
   setThemeWritingFont,
   setUiLanguage,
@@ -25,7 +24,6 @@ import type { VisualPerformancePreset } from "@/lib/performance-mode";
 import { setHumanizerLayerEnabled } from "@/lib/HumanizerLayer";
 import { setGenreBrainEnabled } from "@/lib/GenreBrain";
 import { setStoryBibleLockEnabled } from "@/lib/StoryBibleLock";
-import { setMollyBrainOsEnabled } from "@/lib/molly-brain/flags";
 import { setAdvancedLaunchpadEnabled } from "@/components/one-flow/ProfileMenuDialog";
 import { isDevMode } from "@/lib/dev-mode";
 import { isDevUnlimitedCredits, setDevUnlimitedCredits } from "@/lib/billing/devMode";
@@ -188,7 +186,6 @@ export function ScriptoraSettingsHub({
                 <Toggle label="Smart cache" checked={hub.smartCache} onChange={(v) => patchHub({ smartCache: v })} hint="Mantiene cache locale per sessioni più fluide." />
                 <Toggle label="Smooth transitions" checked={hub.smoothTransitions} onChange={(v) => patchHub({ smoothTransitions: v })} />
                 <Toggle label="Streaming preview" checked={hub.preferStreamingPreview} onChange={(v) => patchHub({ preferStreamingPreview: v })} hint="Preferenza UI per anteprima in streaming." />
-                <Toggle label="Guided flow" checked={snapshot.guidedFlow} onChange={setGuidedFlowEnabled} hint="Percorso guidato nel Writer OS." />
                 <Toggle label="Launchpad avanzato" checked={snapshot.advancedLaunchpad} onChange={setAdvancedLaunchpadEnabled} hint="Mostra strumenti OS secondari nella Home." />
               </Section>
             )}
@@ -451,14 +448,6 @@ export function ScriptoraSettingsHub({
                 </button>
                 {advancedOpen && (
                   <div className="space-y-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-4">
-                    <Toggle
-                      label="Molly Brain (assistente editoriale)"
-                      checked={snapshot.mollyBrain}
-                      onChange={setMollyBrainOsEnabled}
-                    />
-                    <p className="text-[11px] text-white/50 px-1">
-                      Su mobile è disattivato di default. FAB in basso a sinistra — analisi solo su richiesta.
-                    </p>
                     <InfoRow label="Build" value={import.meta.env.MODE} />
                     <InfoRow label="App version" value="Scriptora OS" />
                     <InfoRow label="Verbose logs" value={localStorage.getItem("scriptora-verbose") === "1" ? "ON" : "OFF"} />

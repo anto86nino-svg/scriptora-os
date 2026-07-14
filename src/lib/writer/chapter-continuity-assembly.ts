@@ -530,7 +530,10 @@ export async function repairChapterContinuityAssembly(
 ): Promise<ChapterContinuityRepairResult> {
   const maxAttempts = options.maxRegenAttemptsPerSubchapter ?? 2;
   let working: Chapter = applyChapterContinuityMergePass(chapter, options.language);
-  let assembly = analyzeChapterContinuityAssembly(working, { language: options.language });
+  let assembly = analyzeChapterContinuityAssembly(
+    { subchapters: working.subchapters || [] },
+    { language: options.language },
+  );
   let regenAttempts = 0;
 
   const reconstruction = reconstructSubchapterSequence(
@@ -543,7 +546,10 @@ export async function repairChapterContinuityAssembly(
       { ...working, subchapters: reconstruction.subchapters },
       options.language,
     );
-    assembly = analyzeChapterContinuityAssembly(working, { language: options.language });
+    assembly = analyzeChapterContinuityAssembly(
+      { subchapters: working.subchapters || [] },
+      { language: options.language },
+    );
   }
 
   const hasCritical = assembly.errors.some((e) => e.severity === "critical");
@@ -575,7 +581,10 @@ export async function repairChapterContinuityAssembly(
       working = applyChapterContinuityMergePass({ ...working, subchapters: nextSubs }, options.language);
       attemptCounts.set(subIndex, (attemptCounts.get(subIndex) || 0) + 1);
       regenAttempts += 1;
-      assembly = analyzeChapterContinuityAssembly(working, { language: options.language });
+      assembly = analyzeChapterContinuityAssembly(
+        { subchapters: working.subchapters || [] },
+        { language: options.language },
+      );
 
       if (!assembly.errors.some((e) => e.severity === "critical")) break;
     }

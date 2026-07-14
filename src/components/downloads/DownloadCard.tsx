@@ -71,7 +71,7 @@ export function DownloadCard({ item }: DownloadCardProps) {
                 : "bg-muted text-muted-foreground border-border",
             )}
           >
-            {item.available ? "Ready" : "Coming Soon"}
+            {item.available ? "Disponibile" : "In arrivo"}
           </span>
         </div>
 

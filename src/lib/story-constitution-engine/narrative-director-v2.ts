@@ -7,12 +7,13 @@ export function runNarrativeDirectorV2(
   text: string,
   config: BookConfig,
 ): NarrativeDirectorV2Result {
-  const family = resolveBookTypeDefinition(
+  const bookTypeFamily = resolveBookTypeDefinition(
     config.genre,
     config.subcategory,
     config.subgenre,
     config.bookTypeId,
   ).family;
+  const family = bookTypeFamily === "cookbook" ? "manual" : bookTypeFamily;
   const base = runNarrativeIntelligenceDirector(text, { family, genre: config.genre });
   const warnings: ConstitutionWarning[] = base.signals.map((s) => ({
     ruleId: "story_momentum",

@@ -73,6 +73,7 @@ type ForgeAutoAnswerContext = {
   stakes: string;
   targetReader: string;
   structure: string;
+  rawIdea: string;
   previousAnswers: string[];
 };
 
@@ -152,6 +153,7 @@ function buildContext(input: ForgeAutoAnswerInput): ForgeAutoAnswerContext {
     structure: clean(
       ex.structurePreference ?? ex.chapterCount ?? ex.subchaptersPreference ?? memory.slotValues.structure,
     ),
+    rawIdea: clean(ex.rawIdea ?? ex.editorialSynopsis ?? memory.slotValues.rawIdea),
     previousAnswers: collectPreviousAnswers(state),
   };
   return { ...base, genreProfile: resolveGenreProfile(base) };
@@ -270,6 +272,7 @@ ${ctx.question.question}
 
 KEY: ${ctx.question.key}
 CONTESTO:
+- Premessa originale dell'autore: ${ctx.rawIdea || "—"}
 - Genere: ${ctx.genre || "da definire"} (${ctx.genreProfile})
 - Tono: ${ctx.tone || "da definire"}
 - Promessa: ${ctx.promise || "—"}
@@ -307,6 +310,7 @@ ${ctx.question.question}
 
 KEY: ${ctx.question.key}
 CONTEXT:
+- Author's original premise: ${ctx.rawIdea || "—"}
 - Genre: ${ctx.genre || "TBD"} (${ctx.genreProfile})
 - Tone: ${ctx.tone || "TBD"}
 - Promise: ${ctx.promise || "—"}
@@ -338,6 +342,92 @@ ${jsonShape}`;
 }
 
 type StrategyBuilder = (ctx: ForgeAutoAnswerContext) => string;
+
+function strategyIndex(strategy: ForgeSuggestedAnswer["strategy"]): number {
+  return FORGE_AUTO_ANSWER_STRATEGIES.indexOf(strategy);
+}
+
+function answerFromQuestionSuggestions(
+  strategy: ForgeSuggestedAnswer["strategy"],
+  ctx: ForgeAutoAnswerContext,
+): string | null {
+  const suggestions = ctx.question.quickSuggestions ?? [];
+  if (!suggestions.length) return null;
+  const index = (strategyIndex(strategy) + ctx.variantIndex) % suggestions.length;
+  return clean(suggestions[index]?.value);
+}
+
+function buildQuestionSpecificAnswer(
+  strategy: ForgeSuggestedAnswer["strategy"],
+  ctx: ForgeAutoAnswerContext,
+): string | null {
+  const suggested = answerFromQuestionSuggestions(strategy, ctx);
+  if (suggested) return suggested;
+
+  const index = (strategyIndex(strategy) + ctx.variantIndex) % FORGE_AUTO_ANSWER_STRATEGIES.length;
+  const key = ctx.question.key.toLowerCase();
+  const idea = ctx.rawIdea || ctx.promise;
+  const lead = ctx.protagonist || "il protagonista";
+
+  if (key === "language") return ["Italiano", "English", "Español"][index];
+  if (key === "booklength") return ["Libro breve e intenso.", "Libro di media lunghezza, con ritmo sostenuto.", "Libro lungo e immersivo."][index];
+  if (key === "chaptercount") return ["10 capitoli ben focalizzati.", "14 capitoli con progressione regolare.", "18 capitoli brevi con forte ritmo."][index];
+  if (key === "subchapterspreference") return [
+    "Sottocapitoli solo quando chiariscono davvero il passaggio.",
+    "Tre sottocapitoli per capitolo, con funzione precisa.",
+    "Flusso continuo senza sottocapitoli artificiali.",
+  ][index];
+  if (key === "structurepreference") return [
+    "Tre atti chiari, con svolta centrale e conseguenze crescenti.",
+    "Capitoli brevi a rivelazione progressiva, chiusi da domande narrative.",
+    "Struttura non lineare controllata, con due linee temporali che convergono.",
+  ][index];
+  if (key === "marketplace") return ["Amazon KDP.", "Libreria tradizionale o editore.", "Audiolibro e adattamento audio."][index];
+  if (key === "frontmatter") return ["Dedica e nota breve dell'autore.", "Prefazione essenziale.", "Solo il minimo editoriale necessario."][index];
+  if (key === "backmatter") return ["Ringraziamenti essenziali.", "Nota dell'autore e invito al prossimo libro.", "Nessun contenuto aggiuntivo dopo il finale."][index];
+  if (key === "openinghook") return [
+    `${lead} scopre subito un dettaglio che rende impossibile tornare alla vita di prima.`,
+    `La prima scena mostra una conseguenza concreta del conflitto, prima di spiegarne la causa.`,
+    `Il libro si apre sulla scelta irreversibile che metterà in moto tutta la storia.`,
+  ][index];
+  if (key === "setting") return [
+    ctx.setting || "Un luogo contemporaneo concreto, riconoscibile e coerente con il conflitto.",
+    "Un ambiente chiuso che aumenta la pressione e limita le vie di fuga.",
+    "Due luoghi in contrasto, uno sicuro in apparenza e uno che custodisce la verità.",
+  ][index];
+  if (key.includes("tone") || key === "emotionaltone") return [
+    ctx.tone || "Intimo, preciso e controllato.",
+    "Teso e molto leggibile, senza spiegazioni ridondanti.",
+    "Distintivo e memorabile, ma sempre coerente con la premessa.",
+  ][index];
+  if (key === "openingspark" || key === "readertransformation") {
+    if (idea) {
+      return [
+        `Il cuore resta questo: ${idea}`,
+        `Sviluppa questa premessa senza cambiarne personaggi o conflitto: ${idea}`,
+        `Rendi più netta la posta in gioco, mantenendo intatta l'idea dell'autore: ${idea}`,
+      ][index];
+    }
+    return null;
+  }
+  if (key === "centralconflict" || key.includes("corefear") || key === "stakes") return [
+    ctx.stakes || `${lead} deve ottenere ciò che vuole senza perdere la persona o il valore che lo definisce.`,
+    `Ogni tentativo di ${lead} risolve un problema ma rende il costo personale più alto.`,
+    `La forza opposta conosce il punto debole di ${lead} e lo usa per rendere la scelta finale inevitabile.`,
+  ][index];
+  if (key === "promise" || key.includes("finaldirection") || key === "narrativedrive") return [
+    ctx.promise || `Seguire ${lead} fino a una scelta finale chiara, preparata e irreversibile.`,
+    "Una progressione senza deviazioni: ogni capitolo cambia davvero il rischio o la relazione centrale.",
+    "Un finale sorprendente ma causale, costruito sulle decisioni già prese e non su coincidenze.",
+  ][index];
+  if (key.includes("reader") || key === "targetreader") return [
+    ctx.targetReader || `Lettori del genere ${ctx.genre || "scelto"} che cercano una storia coerente e coinvolgente.`,
+    `Lettori adulti che apprezzano ${ctx.tone || "tensione emotiva"} e personaggi con conseguenze reali.`,
+    "Lettori esigenti che vogliono una voce riconoscibile e nessun riempitivo.",
+  ][index];
+
+  return null;
+}
 
 const GENRE_STRATEGY: Record<GenreProfile, Record<ForgeSuggestedAnswer["strategy"], StrategyBuilder>> = {
   romance: {
@@ -459,6 +549,8 @@ function buildStrategyAnswer(
   input: ForgeAutoAnswerInput,
 ): string {
   const ctx = buildContext(input);
+  const direct = buildQuestionSpecificAnswer(strategy, ctx);
+  if (direct) return direct;
   const builder = GENRE_STRATEGY[ctx.genreProfile][strategy];
   const variantShift =
     ctx.variantIndex > 0

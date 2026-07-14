@@ -1,13 +1,13 @@
 import type { FC } from "react";
 
-interface GuidedStarter {
+export interface GuidedStarter {
   id: string;
   label: string;
   promise: string;
 }
 
 interface Props {
-  starters: GuidedStarter[];
+  starters: readonly GuidedStarter[];
   hidden?: boolean;
   onSelect: (starter: GuidedStarter) => void;
 }

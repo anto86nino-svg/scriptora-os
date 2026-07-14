@@ -41,6 +41,7 @@ describe("Horror/Gothic fix sprint — regression fixture", () => {
       inferredProfile: {
         genre: "horror",
         subgenre: "Horror gotico",
+        confidence: 1,
       },
     };
     state = applyInterviewAnswer(state, FIXTURE.idea);

@@ -15,7 +15,6 @@ import { loadSettings, saveSettings, type WritingSettings } from "@/lib/settings
 import { isHumanizerLayerEnabled, setHumanizerLayerEnabled } from "@/lib/HumanizerLayer";
 import { isGenreBrainEnabled, setGenreBrainEnabled } from "@/lib/GenreBrain";
 import { isStoryBibleLockEnabled, setStoryBibleLockEnabled } from "@/lib/StoryBibleLock";
-import { isMollyBrainOsEnabled, setMollyBrainOsEnabled } from "@/lib/molly-brain/flags";
 import { isAdvancedLaunchpadEnabled, setAdvancedLaunchpadEnabled } from "@/components/one-flow/ProfileMenuDialog";
 
 export const HUB_STORAGE_KEY = "scriptora-settings-hub-v1";
@@ -200,7 +199,6 @@ export function getSettingsSnapshot() {
     humanizer: isHumanizerLayerEnabled(),
     genreBrain: isGenreBrainEnabled(),
     storyBibleLock: isStoryBibleLockEnabled(),
-    mollyBrain: isMollyBrainOsEnabled(),
     advancedLaunchpad: isAdvancedLaunchpadEnabled(),
     activeBackground: SCRIPTORA_BACKGROUNDS.find((b) => b.id === loadScriptoraAppearance().backgroundId),
   };

@@ -62,6 +62,7 @@ import { scriptoraLog } from "@/lib/scriptora-logger";
 import { getPlanLimits } from "@/lib/subscription";
 import { normalizeProjectChapterTitles, resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { ensureBookTitleMetadata } from "@/lib/title-shadow";
+import { getProjectsUsingFreeBookSlot } from "@/lib/project-continuity";
 import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
 import { normalizeBookConfig, normalizeBookProject } from "@/lib/book-config-studio/defaults";
 import { normalizeProjectChapters, normalizeChapterForGeneration } from "@/lib/manuscript/chapter-normalization";
@@ -106,7 +107,7 @@ function countWordsSafe(value: unknown): number {
     return value.reduce((sum, item) => sum + countWordsSafe(item), 0);
   }
   if (typeof value === "object") {
-    return Object.values(value as Record<string, unknown>).reduce((sum, item) => sum + countWordsSafe(item), 0);
+    return Object.values(value as Record<string, unknown>).reduce<number>((sum, item) => sum + countWordsSafe(item), 0);
   }
   return 0;
 }
@@ -117,7 +118,11 @@ function countProjectWordsHard(project: BookProject | null | undefined): number 
   total += countWordsSafe(project.frontMatter);
   total += countWordsSafe(project.backMatter);
   for (const chapter of project.chapters || []) {
-    total += countWordsSafe(chapter?.content);
+    const assembledChapterWords = countWordsSafe(chapter?.content);
+    if (assembledChapterWords > 0) {
+      total += assembledChapterWords;
+      continue;
+    }
     for (const sub of chapter?.subchapters || []) total += countWordsSafe(sub?.content);
   }
   return total;
@@ -181,6 +186,35 @@ async function applyContinuityGateToChapter(
 
 function chapterGenerationKey(projectId: string, index: number): string {
   return `${projectId}:${index}`;
+}
+
+type ChapterEvaluationSnapshot = {
+  projectId: string;
+  content: string;
+  lastGenerationId?: string;
+};
+
+function captureChapterEvaluationSnapshot(project: BookProject, index: number): ChapterEvaluationSnapshot {
+  const chapter = project.chapters[index];
+  return {
+    projectId: project.id,
+    content: chapter?.content || "",
+    lastGenerationId: chapter?.lastGenerationId,
+  };
+}
+
+function isChapterEvaluationSnapshotCurrent(
+  project: BookProject | null | undefined,
+  index: number,
+  snapshot: ChapterEvaluationSnapshot,
+): boolean {
+  const chapter = project?.chapters[index];
+  return Boolean(
+    project?.id === snapshot.projectId
+    && chapter
+    && (chapter.content || "") === snapshot.content
+    && chapter.lastGenerationId === snapshot.lastGenerationId,
+  );
 }
 
 function stripGeneratedHeading(text: string): string {
@@ -311,24 +345,74 @@ function distributeGeneratedChapterSubchapters(
   });
 }
 
-// Debounce remote saves: local save is instant, but Supabase upserts are
-// throttled to avoid flooding the network during chunked generation.
-let remoteSaveTimer: ReturnType<typeof setTimeout> | null = null;
-let pendingRemoteSave: { project: BookProject; cbs?: any } | null = null;
-function scheduleRemoteSave(project: BookProject, cbs?: any) {
-  pendingRemoteSave = { project, cbs };
-  if (remoteSaveTimer) return;
-  remoteSaveTimer = setTimeout(() => {
-    remoteSaveTimer = null;
-    const p = pendingRemoteSave;
-    pendingRemoteSave = null;
-    if (p) {
-      saveProjectAsync(p.project, p.cbs).catch((err) => {
-        console.warn("[sync] remote save failed", err);
-        p.cbs?.onPending?.();
-      });
-    }
-  }, 1500);
+function finalizeGeneratedChapterInProject(input: {
+  project: BookProject;
+  generatedChapter: Chapter;
+  chapterIndex: number;
+  generationId: string;
+  maxProjectWords: number;
+  useSubchapterPipeline: boolean;
+  preserveExistingSubchapters?: boolean;
+}): BookProject {
+  const {
+    project,
+    generatedChapter,
+    chapterIndex,
+    generationId,
+    maxProjectWords,
+    useSubchapterPipeline,
+    preserveExistingSubchapters = true,
+  } = input;
+  const chapters = [...project.chapters];
+  while (chapters.length <= chapterIndex) {
+    chapters.push({ title: resolveProjectChapterTitle(project, chapters.length), content: "", subchapters: [], status: "idle" });
+  }
+
+  let nextPhase: GenerationPhase = project.phase;
+  const existingChapter = chapters[chapterIndex];
+  chapters[chapterIndex] = { ...existingChapter, content: "", subchapters: [] } as Chapter;
+  const usedWithoutThisChapter = countProjectWordsHard({ ...project, chapters });
+  const remaining = Math.max(0, maxProjectWords - usedWithoutThisChapter);
+
+  const finalContent = trimTextToWordLimit(generatedChapter.content, remaining);
+  const assembly = resolveGeneratedChapterAssembly({
+    useSubchapterPipeline,
+    generatedChapter,
+    finalContent,
+    chapterIndex,
+    expectedCount: getExpectedSubchapterCountForChapter(project, chapterIndex),
+    outlineSubchapters: project.blueprint?.chapterOutlines?.[chapterIndex]?.subchapters || [],
+    existingSubchapters: preserveExistingSubchapters ? safeSubchapters(existingChapter) : [],
+  });
+
+  const trimmedContent = trimTextToWordLimit(assembly.content, remaining);
+  const syncedSubs = assembly.subchapters?.length
+    ? resyncSubchapterContentsFromChapter(trimmedContent, assembly.subchapters, chapterIndex)
+    : assembly.subchapters;
+  const finalChapter: Chapter = {
+    ...generatedChapter,
+    title: resolveProjectChapterTitle(project, chapterIndex, generatedChapter.title, trimmedContent),
+    content: trimmedContent,
+    subchapters: syncedSubs,
+  };
+
+  if (remaining <= 0 || countWordsSafe(finalChapter.content) >= remaining) {
+    nextPhase = "complete" as GenerationPhase;
+  }
+
+  chapters[chapterIndex] = {
+    ...finalChapter,
+    subchapters: safeSubchapters(finalChapter),
+    status: "completed" as GenerationStatus,
+    lengthOverride: project.chapters[chapterIndex]?.lengthOverride,
+    lastGenerationId: generationId,
+    rewriteInProgress: false,
+  };
+  const allGenerated = chapters.length >= project.config.numberOfChapters && chapters.every((chapter) => chapter.content.length > 0);
+  const donePhase = allGenerated ? phaseAfterAllChapters(project.config) : project.phase;
+  const finalPhase = nextPhase === "complete" ? nextPhase : donePhase;
+  const refreshed = refreshProjectNarrativeMemory({ ...project, chapters, phase: finalPhase });
+  return { ...refreshed, chapters, phase: finalPhase };
 }
 
 export interface SyncCallbacks {
@@ -337,6 +421,50 @@ export interface SyncCallbacks {
   onPending?: () => void;
   onOffline?: () => void;
 }
+
+// Debounce independently per project and serialize writes for the same id.
+// This prevents project B from replacing project A's pending save and prevents
+// an older request from completing after a newer request for the same book.
+const pendingRemoteSaves = new Map<string, {
+  project: BookProject;
+  cbs?: SyncCallbacks;
+  timer: ReturnType<typeof setTimeout>;
+}>();
+const remoteSaveChains = new Map<string, Promise<void>>();
+
+function scheduleRemoteSave(project: BookProject, cbs?: SyncCallbacks) {
+  const existing = pendingRemoteSaves.get(project.id);
+  if (existing) {
+    existing.project = project;
+    existing.cbs = cbs;
+    return;
+  }
+
+  const entry = {
+    project,
+    cbs,
+    timer: setTimeout(() => {
+      const pending = pendingRemoteSaves.get(project.id);
+      if (!pending) return;
+      pendingRemoteSaves.delete(project.id);
+
+      const previous = remoteSaveChains.get(project.id) ?? Promise.resolve();
+      const queued = previous
+        .catch(() => undefined)
+        .then(() => saveProjectAsync(pending.project, pending.cbs))
+        .catch((err) => {
+          console.warn("[sync] remote save failed", err);
+          pending.cbs?.onPending?.();
+        });
+      remoteSaveChains.set(project.id, queued);
+      void queued.finally(() => {
+        if (remoteSaveChains.get(project.id) === queued) remoteSaveChains.delete(project.id);
+      });
+    }, 1500),
+  };
+  pendingRemoteSaves.set(project.id, entry);
+}
+
 export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   const [project, setProject] = useState<BookProject | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -351,19 +479,33 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   const lastLiveChapterContent = useRef<Map<string, string>>(new Map());
   const liveUiUpdateLogged = useRef<Set<string>>(new Set());
   const chapterGenerationIds = useRef<Map<string, string>>(new Map());
+  const cancelledGenerationIds = useRef<Set<string>>(new Set());
   const rewriteLocks = useRef<Set<number>>(new Set());
+  const generationLocks = useRef<Set<string>>(new Set());
   const PROGRESS_RENDER_MS = 150; // ~6fps for streaming text — perceptually smooth
   const SAVE_THROTTLE_MS = 1000;  // local IDB save throttled during streaming
 
   const syncRef = (p: BookProject | null) => { projectRef.current = p; };
   const isAnythingGenerating = generatingSet.size > 0;
 
+  const acquireGenerationLock = (key: string) => {
+    if (generationLocks.current.has(key)) return false;
+    generationLocks.current.add(key);
+    return true;
+  };
+  const releaseGenerationLock = (key: string) => {
+    generationLocks.current.delete(key);
+  };
+
   const addGenerating = (key: string) => setGeneratingSet(prev => new Set(prev).add(key));
-  const removeGenerating = (key: string) => setGeneratingSet(prev => {
-    const next = new Set(prev);
-    next.delete(key);
-    return next;
-  });
+  const removeGenerating = (key: string) => {
+    releaseGenerationLock(key);
+    setGeneratingSet(prev => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  };
 
   const addMessage = useCallback((role: ChatMessage["role"], content: string) => {
     const msg: ChatMessage = { id: (
@@ -390,11 +532,13 @@ typeof crypto.randomUUID === "function"
 
   const startChapterGeneration = (projectId: string, index: number, prefix: string) => {
     const generationId = createRuntimeGenerationId(prefix);
+    cancelledGenerationIds.current.delete(generationId);
     chapterGenerationIds.current.set(chapterGenerationKey(projectId, index), generationId);
     return generationId;
   };
 
   const isCurrentChapterGeneration = (projectId: string, index: number, generationId: string) => {
+    if (cancelledGenerationIds.current.has(generationId)) return false;
     const latest = getLatestProject();
     if (latest?.id !== projectId) return false;
 
@@ -409,13 +553,21 @@ typeof crypto.randomUUID === "function"
   const clearChapterGenerationIfCurrent = (projectId: string, index: number, generationId: string) => {
     const key = chapterGenerationKey(projectId, index);
     if (chapterGenerationIds.current.get(key) === generationId) chapterGenerationIds.current.delete(key);
+    cancelledGenerationIds.current.delete(generationId);
   };
 
-  const prepareNewBookConfig = useCallback(async (config: BookConfig): Promise<BookConfig | null> => {
+  const prepareNewBookConfig = useCallback(async (
+    config: BookConfig,
+    options: { blueprintPreviewProjectIdToUpgrade?: string } = {},
+  ): Promise<BookConfig | null> => {
     const activePlan = await getActivePlanForEngine();
     if (activePlan === "free") {
       const existingProjects = await loadScopedProjects().catch(() => []);
-      if (existingProjects.length > 0) {
+      const projectsUsingFreeBookSlot = getProjectsUsingFreeBookSlot(
+        existingProjects,
+        options.blueprintPreviewProjectIdToUpgrade,
+      );
+      if (projectsUsingFreeBookSlot.length > 0) {
         const msg = "Hai già usato il libro gratuito. Passa a Pro/Premium per creare altri libri.";
         addMessage("assistant", `🔒 ${msg}`);
         toast.error(msg);
@@ -489,7 +641,10 @@ typeof crypto.randomUUID === "function"
     source: BookProject["blueprintSource"] = "ai",
     projectId?: string,
   ): Promise<BookProject | null> => {
-    const safeConfig = await prepareNewBookConfig({ ...config, configStatus: "approved" });
+    const safeConfig = await prepareNewBookConfig(
+      { ...config, configStatus: "approved" },
+      { blueprintPreviewProjectIdToUpgrade: projectId },
+    );
     if (!safeConfig) return null;
 
     const genreLock = buildGenreLock(safeConfig);
@@ -628,10 +783,11 @@ typeof crypto.randomUUID === "function"
     toast.success("Blueprint approvato — generazione sbloccata");
   }, [project, addMessage, updateAndSave]);
 
-  const startNewBook = useCallback(async (config: BookConfig) => {
+  const startNewBook = useCallback(async (config: BookConfig): Promise<BookProject | null> => {
     const created = await createProjectDraft(config);
-    if (!created) return;
+    if (!created) return null;
     await generateBlueprintForProject();
+    return created;
   }, [createProjectDraft, generateBlueprintForProject]);
 
   const regenerateBlueprint = useCallback(async () => {
@@ -750,16 +906,20 @@ typeof crypto.randomUUID === "function"
       return;
     }
 
+    const genKey = "front-matter";
+    if (generatingSet.has(genKey) || !acquireGenerationLock(genKey)) return;
+
     const maxProjectWords = await getMaxProjectWordsForActivePlan();
     if (countProjectWordsHard(p) >= maxProjectWords) {
       const msg = `Limite piano raggiunto: hai completato ${planLimitLabel(maxProjectWords)}.`;
       addMessage("assistant", `🔒 ${msg}`);
       toast.error(msg);
       updateAndSave(pr => ({ ...pr, phase: "complete" as GenerationPhase }));
+      releaseGenerationLock(genKey);
       return;
     }
 
-    addGenerating("front-matter");
+    addGenerating(genKey);
     updateAndSave(pr => ({ ...pr, frontMatterStatus: "generating" as GenerationStatus }));
     try {
       addMessage("assistant", p.frontMatter ? "Regenerating front matter... 📖" : "Generating front matter... 📖");
@@ -779,9 +939,9 @@ typeof crypto.randomUUID === "function"
       addMessage("assistant", `❌ ${formatUserMessage(err)}`);
       toast.error(formatToastMessage(err));
     } finally {
-      removeGenerating("front-matter");
+      removeGenerating(genKey);
     }
-  }, [project, addMessage, updateAndSave]);
+  }, [project, generatingSet, addMessage, updateAndSave]);
 
   const generateBackMatterSection = useCallback(async () => {
     const p = getLatestProject() || project;
@@ -829,16 +989,20 @@ typeof crypto.randomUUID === "function"
       return;
     }
 
+    const genKey = "back-matter";
+    if (generatingSet.has(genKey) || !acquireGenerationLock(genKey)) return;
+
     const maxProjectWords = await getMaxProjectWordsForActivePlan();
     if (countProjectWordsHard(p) >= maxProjectWords) {
       const msg = `Limite piano raggiunto: hai completato ${planLimitLabel(maxProjectWords)}.`;
       addMessage("assistant", `🔒 ${msg}`);
       toast.error(msg);
       updateAndSave(pr => ({ ...pr, phase: "complete" as GenerationPhase }));
+      releaseGenerationLock(genKey);
       return;
     }
 
-    addGenerating("back-matter");
+    addGenerating(genKey);
     updateAndSave(pr => ({
       ...pr,
       phase: "back-matter" as GenerationPhase,
@@ -857,9 +1021,9 @@ typeof crypto.randomUUID === "function"
       addMessage("assistant", `❌ ${formatUserMessage(err)}`);
       toast.error(formatToastMessage(err));
     } finally {
-      removeGenerating("back-matter");
+      removeGenerating(genKey);
     }
-  }, [project, addMessage, updateAndSave]);
+  }, [project, generatingSet, addMessage, updateAndSave]);
 
   const generateNext = useCallback(async () => {
     const p = getLatestProject() || project;
@@ -895,13 +1059,14 @@ typeof crypto.randomUUID === "function"
     let p = normalizeProjectChapters(getLatestProject() || project);
     if (!p?.blueprint) return;
     const genKey = `chapter-${index}`;
-    if (generatingSet.has(genKey)) return;
+    if (generatingSet.has(genKey) || !acquireGenerationLock(genKey)) return;
 
     try {
       assertProjectReadyForGeneration(p, index);
     } catch (e) {
       if (e instanceof ProjectGenerationBlockedError) {
         handleGenerationBlocked(e, addMessage, "chapter", index);
+        releaseGenerationLock(genKey);
         return;
       }
       throw e;
@@ -1103,58 +1268,14 @@ typeof crypto.randomUUID === "function"
 
       updateAndSave(proj => {
         if (proj.id !== targetProjectId) return proj;
-        const chapters = [...proj.chapters];
-        while (chapters.length <= index) {
-          chapters.push({ title: resolveProjectChapterTitle(proj, chapters.length), content: "", subchapters: [], status: "idle" });
-        }
-
-        let finalChapter = { ...chapter };
-        let nextPhase: GenerationPhase = proj.phase;
-
-        const existingChapter = chapters[index];
-        chapters[index] = { ...existingChapter, content: "", subchapters: [] } as any;
-        const usedWithoutThisChapter = countProjectWordsHard({ ...proj, chapters });
-        const remaining = Math.max(0, maxProjectWordsAfterGeneration - usedWithoutThisChapter);
-
-        const finalContent = trimTextToWordLimit(chapter.content, remaining);
-        const assembly = resolveGeneratedChapterAssembly({
-          useSubchapterPipeline,
+        return finalizeGeneratedChapterInProject({
+          project: proj,
           generatedChapter: chapter,
-          finalContent,
           chapterIndex: index,
-          expectedCount: getExpectedSubchapterCountForChapter(proj, index),
-          outlineSubchapters: proj.blueprint?.chapterOutlines?.[index]?.subchapters || [],
-          existingSubchapters: safeSubchapters(existingChapter),
+          generationId,
+          maxProjectWords: maxProjectWordsAfterGeneration,
+          useSubchapterPipeline,
         });
-
-        const trimmedContent = trimTextToWordLimit(assembly.content, remaining);
-        const syncedSubs = assembly.subchapters?.length
-          ? resyncSubchapterContentsFromChapter(trimmedContent, assembly.subchapters, index)
-          : assembly.subchapters;
-
-        finalChapter = {
-          ...chapter,
-          title: resolveProjectChapterTitle(proj, index, chapter.title, trimmedContent),
-          content: trimmedContent,
-          subchapters: syncedSubs,
-        };
-
-        if (remaining <= 0 || countWordsSafe(finalChapter.content) >= remaining) {
-          nextPhase = "complete" as GenerationPhase;
-        }
-
-        chapters[index] = {
-          ...finalChapter,
-          subchapters: safeSubchapters(finalChapter),
-          status: "completed" as GenerationStatus,
-          lengthOverride: proj.chapters[index]?.lengthOverride,
-          lastGenerationId: generationId,
-          rewriteInProgress: false,
-        };
-        const allGenerated = chapters.length >= proj.config.numberOfChapters && chapters.every(c => c.content.length > 0);
-        const donePhase = allGenerated ? phaseAfterAllChapters(proj.config) : proj.phase;
-        const refreshed = refreshProjectNarrativeMemory({ ...proj, chapters, phase: nextPhase === "complete" ? nextPhase : donePhase });
-        return { ...refreshed, chapters, phase: nextPhase === "complete" ? nextPhase : donePhase };
       });
 
       const latestAfterSave = getLatestProject();
@@ -1272,7 +1393,7 @@ typeof crypto.randomUUID === "function"
     const chapter = p.chapters[chapterIndex];
     if (!chapter) return;
     const genKey = `chapter-${chapterIndex}-sub-${subIndex}`;
-    if (generatingSet.has(genKey)) return;
+    if (generatingSet.has(genKey) || !acquireGenerationLock(genKey)) return;
 
     addGenerating(genKey);
     try {
@@ -1330,13 +1451,14 @@ typeof crypto.randomUUID === "function"
     const p = getLatestProject() || project;
     if (!p?.blueprint) return;
     const genKey = `chapter-${index}`;
-    if (generatingSet.has(genKey)) return;
+    if (generatingSet.has(genKey) || !acquireGenerationLock(genKey)) return;
 
     try {
       assertProjectReadyForGeneration(p, index);
     } catch (e) {
       if (e instanceof ProjectGenerationBlockedError) {
         handleGenerationBlocked(e, addMessage, "chapter", index);
+        releaseGenerationLock(genKey);
         return;
       }
       throw e;
@@ -1368,28 +1490,60 @@ typeof crypto.randomUUID === "function"
       // DeepSeek viene comunque chiamato dal backend; questo bypassa solo il gate interno app.
       const creditOperation = undefined;
       const idempotencyKey = undefined;
-      const chapter = await runGenerateChapter(latestP.config, latestP.blueprint!, index, prevChapters, latestP.chapters[index]?.lengthOverride, latestP.genreLock, {
+      let chapter = await runGenerateChapter(latestP.config, latestP.blueprint!, index, prevChapters, latestP.chapters[index]?.lengthOverride, latestP.genreLock, {
         projectId: latestP.id,
         creditOperation,
         idempotencyKey,
         taskType: "generate_chapter_chunk",
       });
+      const activePlanAfterGeneration = await getActivePlanForEngine();
+      const maxProjectWordsAfterGeneration = getPlanLimits(activePlanAfterGeneration).maxWordsPerBook;
       if (!isCurrentChapterGeneration(targetProjectId, index, generationId)) {
         scriptoraLog.warn("regenerate-chapter", "Ignored stale regenerate result", { chapterIndex: index + 1, generationId });
         return;
       }
+
+      const continuityResult = await applyContinuityGateToChapter(chapter, index, latestP);
+      if (!isCurrentChapterGeneration(targetProjectId, index, generationId)) {
+        scriptoraLog.warn("regenerate-chapter", "Ignored stale regenerate continuity result", { chapterIndex: index + 1, generationId });
+        return;
+      }
+      if (continuityResult.blocked) {
+        addMessage(
+          "assistant",
+          `⚠️ Capitolo ${index + 1}: continuità narrativa critica (${continuityResult.score}/100). Salvataggio bloccato — rigenera i sottocapitoli in conflitto.`,
+        );
+        updateAndSave(proj => {
+          if (proj.id !== targetProjectId) return proj;
+          const chapters = [...proj.chapters];
+          if (chapters[index]) {
+            chapters[index] = {
+              ...chapters[index],
+              content: continuityResult.chapter.content,
+              subchapters: safeSubchapters(continuityResult.chapter),
+              status: "error" as GenerationStatus,
+              rewriteInProgress: false,
+              lastGenerationId: generationId,
+            };
+          }
+          return { ...proj, chapters };
+        });
+        toast.error(`Capitolo ${index + 1}: continuità narrativa insufficiente. Salvataggio completato bloccato.`);
+        return;
+      }
+      chapter = continuityResult.chapter;
+      const useSubchapterPipeline = shouldUseRealSubchapterPipeline(latestP.config, latestP.blueprint);
       updateAndSave(proj => {
         if (proj.id !== targetProjectId) return proj;
-        const chapters = [...proj.chapters];
-        chapters[index] = {
-          ...chapter,
-          title: resolveProjectChapterTitle(proj, index, chapter.title),
-          status: "completed" as GenerationStatus,
-          lengthOverride: proj.chapters[index]?.lengthOverride,
-          lastGenerationId: generationId,
-          rewriteInProgress: false,
-        };
-        return { ...proj, chapters };
+        return finalizeGeneratedChapterInProject({
+          project: proj,
+          generatedChapter: chapter,
+          chapterIndex: index,
+          generationId,
+          maxProjectWords: maxProjectWordsAfterGeneration,
+          useSubchapterPipeline,
+          preserveExistingSubchapters: false,
+        });
       });
       addMessage("assistant", `Chapter ${index + 1} regenerated!`);
       } catch (e: any) {
@@ -1449,15 +1603,24 @@ typeof crypto.randomUUID === "function"
       return;
     }
     if (!p?.chapters[index]?.content) return;
+    const evaluationSnapshot = captureChapterEvaluationSnapshot(p, index);
     const genKey = `eval-${index}`;
-    if (generatingSet.has(genKey)) return;
+    if (generatingSet.has(genKey) || !acquireGenerationLock(genKey)) return;
 
     addGenerating(genKey);
     RecoveryEngine.snapshotBeforeDiagnostics(p);
     try {
       addMessage("assistant", `Evaluating Chapter ${index + 1} quality... 🔍`);
       const rating = await runEvaluateChapterQuality(p.config, p.chapters[index], index, { projectId: p.id });
+      if (!isChapterEvaluationSnapshotCurrent(getLatestProject(), index, evaluationSnapshot)) {
+        scriptoraLog.warn("chapter", "Ignored stale chapter evaluation result", {
+          chapterIndex: index + 1,
+          targetProjectId: evaluationSnapshot.projectId,
+        });
+        return;
+      }
       updateAndSave(proj => {
+        if (!isChapterEvaluationSnapshotCurrent(proj, index, evaluationSnapshot)) return proj;
         const chapters = [...proj.chapters];
         chapters[index] = { ...chapters[index], aiRating: rating, qualityRating: rating.score };
         return { ...proj, chapters };
@@ -1496,11 +1659,12 @@ typeof crypto.randomUUID === "function"
     }
     if (!p?.blueprint || !p.chapters[index]) return;
     const genKey = `chapter-${index}`;
-    if (generatingSet.has(genKey)) return;
+    if (generatingSet.has(genKey) || !acquireGenerationLock(genKey)) return;
     if (rewriteLocks.current.has(index)) {
       const msg = `Rewrite del capitolo ${index + 1} gia' in corso. Attendo la fine dell'operazione corrente.`;
       addMessage("assistant", `⏳ ${msg}`);
       toast.info(msg);
+      releaseGenerationLock(genKey);
       return;
     }
 
@@ -1617,68 +1781,89 @@ typeof crypto.randomUUID === "function"
       return;
     }
     if (!p?.blueprint || !p.chapters[index]?.content) return;
-    const genKey = `chapter-${index}`;
-    if (generatingSet.has(genKey)) return;
+    const workflowKey = `auto-rewrite-${index}`;
+    const chapterKey = `chapter-${index}`;
+    if (
+      generatingSet.has(workflowKey)
+      || generatingSet.has(chapterKey)
+      || generationLocks.current.has(chapterKey)
+      || !acquireGenerationLock(workflowKey)
+    ) return;
     if ((p.chapters[index]?.rewriteAttemptCount || 0) >= 1) {
       addMessage("assistant", `⚠️ Capitolo ${index + 1}: rewrite automatico gia' usato. Evito un secondo passaggio per proteggere la versione migliore.`);
+      releaseGenerationLock(workflowKey);
       return;
     }
 
+    addGenerating(workflowKey);
     addMessage("assistant", `🎯 Auto-quality targeting ${threshold}/5 for Chapter ${index + 1}...`);
 
-    const safeMaxAttempts = Math.min(maxAttempts, 1);
-    for (let attempt = 0; attempt < safeMaxAttempts; attempt++) {
-      // Evaluate
-      addGenerating(`eval-${index}`);
-      let rating: AIQualityRating;
-      try {
-        const latestP = getLatestProject() || p;
-        rating = await runEvaluateChapterQuality(latestP.config, latestP.chapters[index], index, { projectId: latestP.id });
-        updateAndSave(proj => {
-          const chapters = [...proj.chapters];
-          chapters[index] = { ...chapters[index], aiRating: rating, qualityRating: rating.score };
-          return { ...proj, chapters };
-        });
-      } catch (evalErr: any) {
-        scriptoraLog.warn("auto-rewrite", "Eval step failed — breaking auto-rewrite loop", { chapterIndex: index, raw: evalErr?.message });
-        break;
-      } finally {
-        removeGenerating(`eval-${index}`);
-      }
+    try {
+      const safeMaxAttempts = Math.min(maxAttempts, 1);
+      for (let attempt = 0; attempt < safeMaxAttempts; attempt++) {
+        // Evaluate
+        addGenerating(`eval-${index}`);
+        let rating: AIQualityRating;
+        try {
+          const latestP = getLatestProject() || p;
+          const evaluationSnapshot = captureChapterEvaluationSnapshot(latestP, index);
+          rating = await runEvaluateChapterQuality(latestP.config, latestP.chapters[index], index, { projectId: latestP.id });
+          if (!isChapterEvaluationSnapshotCurrent(getLatestProject(), index, evaluationSnapshot)) {
+            scriptoraLog.warn("auto-rewrite", "Ignored stale pre-rewrite evaluation result", { chapterIndex: index + 1 });
+            return;
+          }
+          updateAndSave(proj => {
+            if (!isChapterEvaluationSnapshotCurrent(proj, index, evaluationSnapshot)) return proj;
+            const chapters = [...proj.chapters];
+            chapters[index] = { ...chapters[index], aiRating: rating, qualityRating: rating.score };
+            return { ...proj, chapters };
+          });
+        } catch (evalErr: any) {
+          scriptoraLog.warn("auto-rewrite", "Eval step failed — breaking auto-rewrite loop", { chapterIndex: index, raw: evalErr?.message });
+          break;
+        } finally {
+          removeGenerating(`eval-${index}`);
+        }
 
-      if (rating!.score >= threshold) {
-        addMessage("assistant", `✅ Chapter ${index + 1} reached ${rating!.score}/5 — threshold met!`);
+        if (rating!.score >= threshold) {
+          addMessage("assistant", `✅ Chapter ${index + 1} reached ${rating!.score}/5 — threshold met!`);
+          return;
+        }
+
+        // The workflow has its own lock, so the chapter rewrite can safely own chapter-N.
+        const level: RewriteLevel = attempt === 0 ? "light" : attempt === 1 ? "deep" : "bestseller";
+        addMessage("assistant", `Attempt ${attempt + 1}: Score ${rating!.score}/5 < ${threshold} — applying ${level} rewrite...`);
+        await rewriteChapterWithDepth(index, level);
+
+        addGenerating(`eval-${index}`);
+        try {
+          const afterRewrite = getLatestProject() || p;
+          const postEvaluationSnapshot = captureChapterEvaluationSnapshot(afterRewrite, index);
+          const postRating = await runEvaluateChapterQuality(afterRewrite.config, afterRewrite.chapters[index], index, { projectId: afterRewrite.id });
+          if (!isChapterEvaluationSnapshotCurrent(getLatestProject(), index, postEvaluationSnapshot)) {
+            scriptoraLog.warn("auto-rewrite", "Ignored stale post-rewrite evaluation result", { chapterIndex: index + 1 });
+            return;
+          }
+          updateAndSave(proj => {
+            if (!isChapterEvaluationSnapshotCurrent(proj, index, postEvaluationSnapshot)) return proj;
+            const chapters = [...proj.chapters];
+            chapters[index] = { ...chapters[index], aiRating: postRating, qualityRating: postRating.score, rewriteInProgress: false };
+            return { ...proj, chapters };
+          });
+          addMessage("assistant", `✅ Capitolo ${index + 1}: rewrite automatico completato. Nuovo score: ${postRating.score}/5.`);
+        } catch (postEvalErr: any) {
+          scriptoraLog.warn("auto-rewrite", "Post-rewrite eval failed", { chapterIndex: index, raw: postEvalErr?.message });
+          addMessage("assistant", `✅ Capitolo ${index + 1}: rewrite automatico completato. Rivalutazione non disponibile ora.`);
+        } finally {
+          removeGenerating(`eval-${index}`);
+        }
+
         return;
       }
-
-      // Rewrite with escalating levels
-      const level: RewriteLevel = attempt === 0 ? "light" : attempt === 1 ? "deep" : "bestseller";
-      addMessage("assistant", `Attempt ${attempt + 1}: Score ${rating!.score}/5 < ${threshold} — applying ${level} rewrite...`);
-      await rewriteChapterWithDepth(index, level);
-
-      // Wait for rewrite to finish
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      addGenerating(`eval-${index}`);
-      try {
-        const afterRewrite = getLatestProject() || p;
-        const postRating = await runEvaluateChapterQuality(afterRewrite.config, afterRewrite.chapters[index], index, { projectId: afterRewrite.id });
-        updateAndSave(proj => {
-          const chapters = [...proj.chapters];
-          chapters[index] = { ...chapters[index], aiRating: postRating, qualityRating: postRating.score, rewriteInProgress: false };
-          return { ...proj, chapters };
-        });
-        addMessage("assistant", `✅ Capitolo ${index + 1}: rewrite automatico completato. Nuovo score: ${postRating.score}/5.`);
-      } catch (postEvalErr: any) {
-        scriptoraLog.warn("auto-rewrite", "Post-rewrite eval failed", { chapterIndex: index, raw: postEvalErr?.message });
-        addMessage("assistant", `✅ Capitolo ${index + 1}: rewrite automatico completato. Rivalutazione non disponibile ora.`);
-      } finally {
-        removeGenerating(`eval-${index}`);
-      }
-
-      return;
+      addMessage("assistant", `⚠️ Chapter ${index + 1}: limite rewrite automatico raggiunto. Revisiona manualmente se serve.`);
+    } finally {
+      removeGenerating(workflowKey);
     }
-    addMessage("assistant", `⚠️ Chapter ${index + 1}: limite rewrite automatico raggiunto. Revisiona manualmente se serve.`);
   }, [project, generatingSet, addMessage, updateAndSave, rewriteChapterWithDepth]);
 
   const updateConfig = useCallback((key: keyof BookConfig, value: any) => {
@@ -1770,15 +1955,20 @@ typeof crypto.randomUUID === "function"
       if (!p.blueprint) return p;
       const chapterOutlines = [...p.blueprint.chapterOutlines];
       if (!chapterOutlines[index]) return p;
+      const resolvedTitle = resolveChapterTitle(title, index, {
+        config: p.config,
+        summary: chapterOutlines[index]?.summary,
+        totalChapters: p.config.numberOfChapters,
+      });
       chapterOutlines[index] = {
         ...chapterOutlines[index],
-        title: resolveChapterTitle(title, index, {
-          config: p.config,
-          summary: chapterOutlines[index]?.summary,
-          totalChapters: p.config.numberOfChapters,
-        }),
+        title: resolvedTitle,
       };
-      return { ...p, blueprint: { ...p.blueprint, chapterOutlines } };
+      const chapters = [...p.chapters];
+      if (chapters[index] && !String(chapters[index].content || "").trim()) {
+        chapters[index] = { ...chapters[index], title: resolvedTitle };
+      }
+      return { ...p, chapters, blueprint: { ...p.blueprint, chapterOutlines } };
     });
   }, [updateAndSave]);
 
@@ -1789,6 +1979,39 @@ typeof crypto.randomUUID === "function"
       if (!chapterOutlines[index]) return p;
       chapterOutlines[index] = { ...chapterOutlines[index], summary };
       return { ...p, blueprint: { ...p.blueprint, chapterOutlines } };
+    });
+  }, [updateAndSave]);
+
+  const updateBlueprintSubchapterSummary = useCallback((chapterIndex: number, subIndex: number, summary: string) => {
+    updateAndSave(p => {
+      if (!p.blueprint) return p;
+      const chapterOutlines = [...p.blueprint.chapterOutlines];
+      const outline = chapterOutlines[chapterIndex];
+      if (!outline?.subchapters?.[subIndex]) return p;
+      const subchapters = [...outline.subchapters];
+      subchapters[subIndex] = { ...subchapters[subIndex], summary };
+      chapterOutlines[chapterIndex] = { ...outline, subchapters };
+      return { ...p, blueprint: { ...p.blueprint, chapterOutlines } };
+    });
+  }, [updateAndSave]);
+
+  const updateBlueprintSubchapterTitle = useCallback((chapterIndex: number, subIndex: number, title: string) => {
+    updateAndSave(p => {
+      if (!p.blueprint) return p;
+      const chapterOutlines = [...p.blueprint.chapterOutlines];
+      const outline = chapterOutlines[chapterIndex];
+      if (!outline?.subchapters?.[subIndex]) return p;
+      const subchapters = [...outline.subchapters];
+      subchapters[subIndex] = { ...subchapters[subIndex], title };
+      chapterOutlines[chapterIndex] = { ...outline, subchapters };
+      const chapters = [...p.chapters];
+      const chapter = chapters[chapterIndex];
+      if (chapter?.subchapters?.[subIndex] && !String(chapter.subchapters[subIndex].content || "").trim()) {
+        const generatedSubs = [...chapter.subchapters];
+        generatedSubs[subIndex] = { ...generatedSubs[subIndex], title };
+        chapters[chapterIndex] = { ...chapter, subchapters: generatedSubs };
+      }
+      return { ...p, chapters, blueprint: { ...p.blueprint, chapterOutlines } };
     });
   }, [updateAndSave]);
 
@@ -2050,18 +2273,60 @@ typeof crypto.randomUUID === "function"
   }, [project, addMessage, updateAndSave, generateSingleChapter]);
 
   const cancelGeneration = useCallback((key?: string) => {
+    const cancelChapterKey = (generationKey: string) => {
+      const match = generationKey.match(/^chapter-(\d+)$/);
+      const currentProject = getLatestProject();
+      if (!match || !currentProject) return;
+      const chapterIndex = Number.parseInt(match[1], 10);
+      const runtimeKey = chapterGenerationKey(currentProject.id, chapterIndex);
+      const generationId = chapterGenerationIds.current.get(runtimeKey);
+      if (generationId) cancelledGenerationIds.current.add(generationId);
+      chapterGenerationIds.current.delete(runtimeKey);
+      lastProgressRenderAt.current.delete(generationKey);
+      lastSaveAt.current.delete(generationKey);
+      lastLiveChapterContent.current.delete(generationKey);
+      liveUiUpdateLogged.current.delete(generationKey);
+      setChunkProgress((previous) => {
+        const next = { ...previous };
+        delete next[generationKey];
+        return next;
+      });
+      updateAndSave((current) => {
+        if (current.id !== currentProject.id || !current.chapters[chapterIndex]) return current;
+        const chapters = [...current.chapters];
+        const chapter = chapters[chapterIndex];
+        const hasContent = Boolean(chapter.content?.trim());
+        const wasFreshChapter = generationId?.startsWith("chapter-");
+        chapters[chapterIndex] = {
+          ...chapter,
+          status: hasContent ? (wasFreshChapter ? "recovered_partial" : "completed") : "idle",
+          lastGenerationId: undefined,
+          rewriteInProgress: false,
+        };
+        return { ...current, chapters };
+      });
+    };
+
     if (key) {
       const ctrl = abortControllers.current.get(key);
       if (ctrl) { ctrl.abort(); abortControllers.current.delete(key); }
+      cancelChapterKey(key);
       removeGenerating(key);
       addMessage("assistant", `⛔ Generation cancelled.`);
     } else {
+      for (const generationId of chapterGenerationIds.current.values()) {
+        cancelledGenerationIds.current.add(generationId);
+      }
+      for (const generationKey of generatingSet) cancelChapterKey(generationKey);
+      chapterGenerationIds.current.clear();
       abortControllers.current.forEach(ctrl => ctrl.abort());
       abortControllers.current.clear();
+      generationLocks.current.clear();
+      setChunkProgress({});
       setGeneratingSet(new Set());
       addMessage("assistant", `⛔ All generation cancelled.`);
     }
-  }, [addMessage]);
+  }, [addMessage, generatingSet, updateAndSave]);
 
   return {
     project, messages, isAnythingGenerating, generatingSet, chunkProgress,
@@ -2072,7 +2337,7 @@ typeof crypto.randomUUID === "function"
     regenerateChapter, rewriteChapterWithDepth, evaluateChapter, autoRewriteToThreshold,
     updateChapterEditorialAnalysis,
     updateConfig, updateChapterContent, updateChapterTitle, updateSubchapterContent, updateSubchapterTitle,
-    updateBlueprintField, updateBlueprintOutlineTitle, updateBlueprintOutlineSummary,
+    updateBlueprintField, updateBlueprintOutlineTitle, updateBlueprintOutlineSummary, updateBlueprintSubchapterTitle, updateBlueprintSubchapterSummary,
     updateFrontMatterField, updateBackMatterField,
     setChapterLengthOverride,
     loadProject, handleUserMessage, isGeneratingSection, cancelGeneration,

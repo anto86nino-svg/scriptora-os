@@ -83,7 +83,7 @@ function countWordsInValue(value: unknown): number {
   if (typeof value === "string") return countWordsInText(value);
   if (Array.isArray(value)) return value.reduce((sum, item) => sum + countWordsInValue(item), 0);
   if (typeof value === "object") {
-    return Object.values(value as Record<string, unknown>).reduce((sum, item) => sum + countWordsInValue(item), 0);
+    return Object.values(value as Record<string, unknown>).reduce<number>((sum, item) => sum + countWordsInValue(item), 0);
   }
   return 0;
 }

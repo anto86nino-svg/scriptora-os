@@ -1,0 +1,53 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Scriptora: avvia",
+      "type": "shell",
+      "command": "./scripts/dev-local.sh",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "scriptora",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*Avvio Scriptora.*",
+          "endsPattern": ".*Local:.*http://.*"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      }
+    },
+    {
+      "label": "Scriptora: verifica TypeScript",
+      "type": "shell",
+      "command": "./scripts/use-node-22.sh npm run typecheck",
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "Scriptora: test",
+      "type": "shell",
+      "command": "./scripts/use-node-22.sh npm test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Scriptora: build",
+      "type": "shell",
+      "command": "./scripts/use-node-22.sh npm run build",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}
